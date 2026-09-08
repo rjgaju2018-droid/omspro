@@ -54,6 +54,15 @@ export type ShipmentDetail = {
   status: "pending" | "created" | "failed" | "cancelled";
   awbNo: string | null;
   labelUrl: string | null;
+  // The courier's own raw API response for this booking attempt (already
+  // captured at booking time into courier_shipments.response_payload —
+  // see actions.ts's logAttempt — but never surfaced anywhere until now).
+  // Added 2026-09-08: a real FedEx booking succeeded (got a tracking
+  // number) but returned no label, with nothing in the UI to say why. This
+  // is the fastest way to see what the courier actually sent back — e.g.
+  // whether shipmentDocuments was empty/absent — without needing server
+  // log access. Shown in a collapsed <details> block on the detail page.
+  responsePayload: unknown;
   serviceCode: string | null;
   ddpDdu: string | null;
   errorMessage: string | null;
@@ -109,7 +118,7 @@ export async function getShipmentDetail(supabase: ServiceClient, companyIds: str
   const { data: shipment } = await supabase
     .from("courier_shipments")
     .select(
-      "id, courier, manual_courier_name, order_id, order_shipment_id, service_code, ddp_ddu, status, awb_no, label_url, booked_amt, booked_currency, booked_amount_source, error_message, created_at, cancel_reason, cancel_remark, cancelled_at"
+      "id, courier, manual_courier_name, order_id, order_shipment_id, service_code, ddp_ddu, status, awb_no, label_url, response_payload, booked_amt, booked_currency, booked_amount_source, error_message, created_at, cancel_reason, cancel_remark, cancelled_at"
     )
     .eq("id", courierShipmentId)
     .maybeSingle();
@@ -187,6 +196,7 @@ export async function getShipmentDetail(supabase: ServiceClient, companyIds: str
     status: shipment.status as ShipmentDetail["status"],
     awbNo: shipment.awb_no,
     labelUrl: shipment.label_url,
+    responsePayload: shipment.response_payload,
     serviceCode: shipment.service_code,
     ddpDdu: shipment.ddp_ddu,
     errorMessage: shipment.error_message,

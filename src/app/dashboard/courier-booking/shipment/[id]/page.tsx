@@ -59,7 +59,13 @@ export default async function ShipmentDetailPage({ params }: { params: Promise<{
               🧾 Print Invoice
             </a>
           ) : (
-            <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-400">No invoice generated yet</span>
+            <Link
+              href="/dashboard/invoices"
+              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100"
+              title="No invoice was auto-generated for this shipment (or it isn't an export/DDP-DDU booking) — create one manually here."
+            >
+              No invoice generated yet — create one manually →
+            </Link>
           )}
           {detail.labelUrl && detail.order.invoiceId && <AllDocumentsButton labelUrl={detail.labelUrl} invoiceId={detail.order.invoiceId} />}
           {detail.status === "created" && <CancelShipmentModal courierShipmentId={detail.id} />}
@@ -164,6 +170,28 @@ export default async function ShipmentDetailPage({ params }: { params: Promise<{
           </table>
         </div>
       </Section>
+
+      {!detail.labelUrl && detail.status === "created" && (
+        <Section title="Why is there no label?">
+          <p className="mb-2 text-xs text-slate-500">
+            The booking succeeded (tracking number {detail.awbNo ?? "on file"}) but the courier&apos;s response didn&apos;t include a printable label. This
+            app can only show a label when the courier includes one in its own response — expand the raw response below to see exactly what{" "}
+            {detail.courierLabel} sent back. If it genuinely has no label document in it, that&apos;s something to raise with {detail.courierLabel}&apos;s
+            own support, referencing this tracking number — it usually means an account-side setting on their end, not something fixable from this app
+            alone.
+          </p>
+          {detail.responsePayload != null ? (
+            <details className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+              <summary className="cursor-pointer text-xs font-medium text-slate-600">View raw {detail.courierLabel} API response</summary>
+              <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap break-all text-[10px] text-slate-600">
+                {JSON.stringify(detail.responsePayload, null, 2)}
+              </pre>
+            </details>
+          ) : (
+            <p className="text-xs text-slate-400">No raw response was captured for this booking attempt.</p>
+          )}
+        </Section>
+      )}
     </div>
   );
 }

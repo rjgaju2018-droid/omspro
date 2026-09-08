@@ -379,6 +379,16 @@ async function writeOrderShipmentFromBooking(
 //   exception, so a booking that succeeded stays reported as a success even
 //   if invoice generation errors (e.g. missing store/company invoice
 //   prefix, a numbering RPC failure).
+// - RETURN VALUE (added 2026-09-08, see that round's writeup): previously
+//   this returned void and every failure reason above ONLY reached
+//   console.error (Vercel server logs) — invisible to the employee who
+//   booked the shipment, who'd see a normal success banner with no
+//   indication the invoice never got created and no clue why. A real
+//   booking hit exactly this (store invoice prefix never configured) and
+//   the employee had no way to find out short of asking someone to check
+//   server logs. Now returns the human-readable reason (or null when
+//   generation wasn't attempted/succeeded) so callers can surface it in
+//   CourierBookingCreateState.invoiceWarning.
 async function maybeAutoGenerateCsbVInvoiceForBooking(
   supabase: ServiceClient,
   employee: AuthedEmployee,
@@ -391,9 +401,9 @@ async function maybeAutoGenerateCsbVInvoiceForBooking(
     dimsCm: { length: number; width: number; height: number };
     ddpDdu: "DDP" | "DDU" | null;
   }
-): Promise<void> {
-  if (!args.ddpDdu) return; // domestic (Delhivery/Shiprocket) — not an export shipment, no CSB invoice applies.
-  if (str(args.formData, "combined_order_ids")) return; // Combine batch — see header comment, skipped entirely.
+): Promise<string | null> {
+  if (!args.ddpDdu) return null; // domestic (Delhivery/Shiprocket) — not an export shipment, no CSB invoice applies.
+  if (str(args.formData, "combined_order_ids")) return null; // Combine batch — see header comment, skipped entirely.
 
   try {
     const result = await generateInvoiceCore(employee, supabase, {
@@ -439,12 +449,15 @@ async function maybeAutoGenerateCsbVInvoiceForBooking(
     });
     if (result.error) {
       console.error(`[auto-invoice] booking for order ${args.orderId} succeeded, but CSB-V auto-invoice generation failed: ${result.error}`);
+      return `Booking succeeded, but the CSB-V export invoice could not be auto-generated: ${result.error} You can create it manually from the Invoices tab once fixed.`;
     }
+    return null;
   } catch (err) {
     // Belt-and-braces — generateInvoiceCore returns errors rather than
     // throwing, but this must never let ANY failure shape here roll back or
     // block an already-successful booking.
     console.error(`[auto-invoice] booking for order ${args.orderId} succeeded, but CSB-V auto-invoice generation threw:`, err);
+    return "Booking succeeded, but the CSB-V export invoice could not be auto-generated (unexpected error — see server logs). You can create it manually from the Invoices tab.";
   }
 }
 
@@ -539,6 +552,12 @@ export type CourierBookingCreateState = {
   // file's header comment). ResultBanner in create-shipment-form.tsx shows
   // a download link only when this is non-null.
   labelUrl: string | null;
+  // Non-blocking warning surfaced alongside a SUCCESSFUL booking — set only
+  // when the auto CSB-V export invoice generation was attempted and failed
+  // (see maybeAutoGenerateCsbVInvoiceForBooking's header comment). null on
+  // every early-return/error path (via the ...CREATE_INITIAL spread) and
+  // whenever invoice generation wasn't attempted or succeeded.
+  invoiceWarning: string | null;
 };
 
 const CREATE_INITIAL: CourierBookingCreateState = {
@@ -549,6 +568,7 @@ const CREATE_INITIAL: CourierBookingCreateState = {
   bookedCurrency: null,
   bookedAmountSource: null,
   labelUrl: null,
+  invoiceWarning: null,
 };
 
 async function resolveShipperProfile(supabase: ServiceClient, companyId: string) {
@@ -659,7 +679,7 @@ export async function createFedexBooking(_prev: CourierBookingCreateState, formD
       createdBy: employee.id,
     });
 
-    await maybeAutoGenerateCsbVInvoiceForBooking(supabase, employee, {
+    const invoiceWarning = await maybeAutoGenerateCsbVInvoiceForBooking(supabase, employee, {
       formData,
       orderId,
       courierLabel: "FedEx",
@@ -695,7 +715,7 @@ export async function createFedexBooking(_prev: CourierBookingCreateState, formD
 
     revalidatePath("/dashboard/courier-booking");
     revalidatePath("/dashboard/orders");
-    return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null };
+    return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null, invoiceWarning };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logAttempt(supabase, { courier: "fedex", orderId, serviceCode: input.serviceType, ddpDdu: input.ddpDdu, status: "failed", errorMessage: message, createdBy: employee.id });
@@ -805,7 +825,7 @@ export async function createUpsBooking(_prev: CourierBookingCreateState, formDat
       createdBy: employee.id,
     });
 
-    await maybeAutoGenerateCsbVInvoiceForBooking(supabase, employee, {
+    const invoiceWarning = await maybeAutoGenerateCsbVInvoiceForBooking(supabase, employee, {
       formData,
       orderId,
       courierLabel: "UPS",
@@ -841,7 +861,7 @@ export async function createUpsBooking(_prev: CourierBookingCreateState, formDat
 
     revalidatePath("/dashboard/courier-booking");
     revalidatePath("/dashboard/orders");
-    return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null };
+    return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null, invoiceWarning };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logAttempt(supabase, { courier: "ups", orderId, serviceCode: input.serviceCode, ddpDdu: input.ddpDdu, status: "failed", errorMessage: message, createdBy: employee.id });
@@ -960,7 +980,7 @@ export async function createAramexBooking(_prev: CourierBookingCreateState, form
       createdBy: employee.id,
     });
 
-    await maybeAutoGenerateCsbVInvoiceForBooking(supabase, employee, {
+    const invoiceWarning = await maybeAutoGenerateCsbVInvoiceForBooking(supabase, employee, {
       formData,
       orderId,
       courierLabel: "Aramex",
@@ -996,7 +1016,7 @@ export async function createAramexBooking(_prev: CourierBookingCreateState, form
 
     revalidatePath("/dashboard/courier-booking");
     revalidatePath("/dashboard/orders");
-    return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null };
+    return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null, invoiceWarning };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logAttempt(supabase, { courier: "aramex", orderId, serviceCode: input.productType, ddpDdu, status: "failed", errorMessage: message, createdBy: employee.id });
@@ -1090,7 +1110,7 @@ export async function createDelhiveryBooking(_prev: CourierBookingCreateState, f
     // Delhivery is domestic-only (no DDP/DDU) — maybeAutoGenerateCsbVInvoiceForBooking
     // skips whenever ddpDdu is null, so this call is included for consistency with
     // every other courier but will always no-op here. See that function's header comment.
-    await maybeAutoGenerateCsbVInvoiceForBooking(supabase, employee, {
+    const invoiceWarning = await maybeAutoGenerateCsbVInvoiceForBooking(supabase, employee, {
       formData,
       orderId,
       courierLabel: "Delhivery",
@@ -1126,7 +1146,7 @@ export async function createDelhiveryBooking(_prev: CourierBookingCreateState, f
 
     revalidatePath("/dashboard/courier-booking");
     revalidatePath("/dashboard/orders");
-    return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null };
+    return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null, invoiceWarning };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logAttempt(supabase, { courier: "delhivery", orderId, status: "failed", errorMessage: message, createdBy: employee.id });
@@ -1223,7 +1243,7 @@ export async function createShiprocketBooking(_prev: CourierBookingCreateState, 
     });
 
     // Shiprocket is domestic-only (no DDP/DDU) — see the same note on Delhivery above.
-    await maybeAutoGenerateCsbVInvoiceForBooking(supabase, employee, {
+    const invoiceWarning = await maybeAutoGenerateCsbVInvoiceForBooking(supabase, employee, {
       formData,
       orderId,
       courierLabel: "Shiprocket",
@@ -1259,7 +1279,7 @@ export async function createShiprocketBooking(_prev: CourierBookingCreateState, 
 
     revalidatePath("/dashboard/courier-booking");
     revalidatePath("/dashboard/orders");
-    return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null };
+    return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null, invoiceWarning };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logAttempt(supabase, { courier: "shiprocket", orderId, status: "failed", errorMessage: message, createdBy: employee.id });
@@ -1380,7 +1400,7 @@ export async function createDhlBooking(_prev: CourierBookingCreateState, formDat
       createdBy: employee.id,
     });
 
-    await maybeAutoGenerateCsbVInvoiceForBooking(supabase, employee, {
+    const invoiceWarning = await maybeAutoGenerateCsbVInvoiceForBooking(supabase, employee, {
       formData,
       orderId,
       courierLabel: "DHL",
@@ -1416,7 +1436,7 @@ export async function createDhlBooking(_prev: CourierBookingCreateState, formDat
 
     revalidatePath("/dashboard/courier-booking");
     revalidatePath("/dashboard/orders");
-    return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null };
+    return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null, invoiceWarning };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logAttempt(supabase, { courier: "dhl", orderId, serviceCode: input.productCode, ddpDdu, status: "failed", errorMessage: message, createdBy: employee.id });

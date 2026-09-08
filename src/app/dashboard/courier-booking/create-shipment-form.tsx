@@ -25,6 +25,7 @@ const createInitial: CourierBookingCreateState = {
   bookedCurrency: null,
   bookedAmountSource: null,
   labelUrl: null,
+  invoiceWarning: null,
 };
 const manualBookingInitial: ManualBookingState = { error: null, success: false, shipmentId: null, awbNo: null };
 const inputClass =
@@ -70,10 +71,11 @@ function ResultBanner({ state }: { state: CourierBookingCreateState }) {
             </>
           )}
           {!state.labelUrl && state.trackingNo && (
-            <> No label captured from this booking yet — see the Track Shipments tab (Delhivery/Shiprocket can generate one on demand there; for other couriers, check the courier&apos;s own dashboard).</>
+            <> No label came back in the courier&apos;s booking response — see this shipment&apos;s detail page (via Track Shipments) for the raw API response, which shows exactly what the courier returned (Delhivery/Shiprocket can generate a label on demand there instead; for FedEx/UPS/Aramex/DHL, the raw response is the fastest way to tell if this needs a call to the courier&apos;s support, referencing this tracking number).</>
           )}
         </div>
       )}
+      {state.invoiceWarning && <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{state.invoiceWarning}</p>}
     </>
   );
 }
