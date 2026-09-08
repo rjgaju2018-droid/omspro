@@ -158,20 +158,13 @@ export async function createFedexShipment(
   }
 
   const body = {
-    // 2026-09-08: was "URL_ONLY" — for this account that came back with no
-    // usable label (shipments booked successfully, tracking number and rate
-    // all present, but shipmentDocuments[].url was never populated), which
-    // is why no label was ever generated for a FedEx test shipment. "LABEL"
-    // asks FedEx to return the label as base64 bytes directly in
-    // shipmentDocuments[].encodedLabel instead of a follow-up URL — this
-    // response-parsing code already had a correct fallback to encodedLabel
-    // (see below) that "URL_ONLY" mode never exercised. "LABEL" mode is
-    // self-contained (no second request, no dependency on a FedEx-side
-    // hosted-label-URL account feature), so it's the safer default even
-    // though FedEx's own docs weren't fully verifiable from here — see the
-    // delivery notes sent with this change for what to check if labels are
-    // still empty after this.
-    labelResponseOptions: "LABEL",
+    // 2026-09-08: kept as "URL_ONLY" — confirmed correct against a real
+    // FedEx sandbox response the user captured and pasted back (see
+    // fedex-ship-real-response-2026-09-08.json in the delivery notes): with
+    // this option FedEx really does return a fetchable label URL. The bug
+    // was never this setting — it was where the response-parsing code below
+    // was looking for that URL. See the parsing comment below.
+    labelResponseOptions: "URL_ONLY",
     requestedShipment,
     accountNumber: { value: input.shipper.accountNumber },
   };
@@ -186,13 +179,39 @@ export async function createFedexShipment(
     body: JSON.stringify(body),
   });
   const text = await res.text();
+  // Both fields below were fixed 2026-09-08 against a REAL FedEx sandbox
+  // response the user captured and pasted back — not FedEx's public docs
+  // (which this project's rules treat as unreliable on their own; see the
+  // header comment on FEDEX_API_BASE for why). The real response shape
+  // differs from what was originally guessed in two ways:
+  //
+  // 1. LABEL: the label document does NOT live at
+  //    completedShipmentDetail.shipmentDocuments[] — that field is simply
+  //    absent from a real response. It's one level down, per package, at
+  //    transactionShipments[].pieceResponses[].packageDocuments[], each
+  //    entry shaped { url, docType, contentType }. This — not the
+  //    labelResponseOptions setting above — was the actual reason no label
+  //    ever came back: the code was reading a field that doesn't exist.
+  //    contentType "LABEL" picks out the shipping label specifically,
+  //    since an international shipment's packageDocuments can also carry
+  //    other document types (e.g. a commercial invoice) in the same array.
+  //
+  // 2. RATE: shipmentRateDetails[].totalNetCharge is a plain number
+  //    (e.g. 157.56), not a { amount, currency } object — currency is a
+  //    sibling field on the same rate-detail entry. Reading
+  //    totalNetCharge.amount/.currency (the original code) silently
+  //    returned undefined for both on every real response, so bookedAmt
+  //    and bookedCurrency were always null even when FedEx quoted a real
+  //    rate.
   let parsed: {
     output?: {
       transactionShipments?: Array<{
+        pieceResponses?: Array<{
+          packageDocuments?: Array<{ url?: string; encodedLabel?: string; docType?: string; contentType?: string }>;
+        }>;
         completedShipmentDetail?: {
           masterTrackingId?: { trackingNumber?: string };
-          shipmentRating?: { shipmentRateDetails?: Array<{ totalNetCharge?: { amount?: number; currency?: string } }> };
-          shipmentDocuments?: Array<{ url?: string; encodedLabel?: string }>;
+          shipmentRating?: { shipmentRateDetails?: Array<{ totalNetCharge?: number; currency?: string }> };
         };
       }>;
     };
@@ -211,16 +230,24 @@ export async function createFedexShipment(
   const shipment = parsed.output?.transactionShipments?.[0];
   const detail = shipment?.completedShipmentDetail;
   const trackingNo = detail?.masterTrackingId?.trackingNumber ?? null;
-  const rate = detail?.shipmentRating?.shipmentRateDetails?.[0]?.totalNetCharge;
-  const doc = detail?.shipmentDocuments?.[0];
-  const labelUrl = doc?.url ?? (doc?.encodedLabel ? `data:application/pdf;base64,${doc.encodedLabel}` : null);
+  const rateDetail = detail?.shipmentRating?.shipmentRateDetails?.[0];
+
+  // One packageDocuments[] array per package (pieceResponses[]) — a
+  // single-package shipment (the only case this app books today) has
+  // exactly one. Flatten defensively so a future multi-package booking
+  // doesn't silently drop documents from package 2+, then prefer the entry
+  // FedEx marks contentType "LABEL" over just taking documents[0], since
+  // international shipments can carry more than one document type here.
+  const packageDocuments = shipment?.pieceResponses?.flatMap((p) => p.packageDocuments ?? []) ?? [];
+  const labelDoc = packageDocuments.find((d) => d.contentType === "LABEL") ?? packageDocuments[0];
+  const labelUrl = labelDoc?.url ?? (labelDoc?.encodedLabel ? `data:application/pdf;base64,${labelDoc.encodedLabel}` : null);
 
   return {
     success: !!trackingNo,
     trackingNo,
     labelUrl,
-    bookedAmt: rate?.amount ?? null,
-    bookedCurrency: rate?.currency ?? null,
+    bookedAmt: rateDetail?.totalNetCharge ?? null,
+    bookedCurrency: rateDetail?.currency ?? null,
     raw: parsed,
   };
 }
