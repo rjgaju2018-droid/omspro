@@ -32,9 +32,21 @@
 //   cool, high-contrast professional teal/blue look, light content with a
 //   deep teal sidebar and a teal accent. Documented in the build's report
 //   as swappable if the user wants a different 5th theme later.
-export type ThemeId = "navy-gold" | "day" | "eye-comfort" | "night" | "ocean";
+// - nova: 6th theme, added 2026-09-08 in response to "chose desgine and
+//   use our system and redesgine UI with specil colour effect" — a design
+//   language was picked from a supplied 74-brand design-token reference
+//   collection and adapted as a new preset here (see
+//   db/2026-09-08-nova-theme.sql for the full reasoning). Deep near-black
+//   canvas everywhere (not just the sidebar, like navy-gold/day/ocean) with
+//   an electric violet accent (#5e6ad2) — the most visually distinct of
+//   the 6 presets, and the only one with its own extra "special colour
+//   effect" flourish: an ambient violet glow behind the sidebar and a
+//   soft pulse on the active nav tile, both scoped to
+//   `[data-theme="nova"]` in globals.css so the other 5 themes are
+//   untouched.
+export type ThemeId = "navy-gold" | "day" | "eye-comfort" | "night" | "ocean" | "nova";
 
-export const THEME_IDS: ThemeId[] = ["navy-gold", "day", "eye-comfort", "night", "ocean"];
+export const THEME_IDS: ThemeId[] = ["navy-gold", "day", "eye-comfort", "night", "ocean", "nova"];
 
 export const DEFAULT_THEME: ThemeId = "navy-gold";
 
@@ -76,6 +88,12 @@ export const THEME_META: Record<ThemeId, ThemeMeta> = {
     label: "Ocean",
     description: "Cool teal/blue professional look. (5th theme — build's pick, swap if you'd rather have something else)",
     swatch: { canvas: "#eef6f8", sidebar: "#0c344a", accent: "#0ea5a4", surface: "#ffffff" },
+  },
+  nova: {
+    id: "nova",
+    label: "Nova",
+    description: "Deep near-black with an electric violet accent and an ambient glow effect — the boldest of the 6 looks.",
+    swatch: { canvas: "#0a0a0c", sidebar: "#050506", accent: "#5e6ad2", surface: "#131318" },
   },
 };
 

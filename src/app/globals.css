@@ -156,6 +156,50 @@ body {
 }
 
 /*
+ * 2026-09-08 — "Nova": 6th theme, added for "chose desgine and use our
+ * system and redesgine UI with specil colour effect" — a design language
+ * picked from a supplied 74-brand design-token reference collection
+ * (design-md/linear.app in that collection: "a near-black product-focused
+ * canvas... quietly luxurious", read as a strong fit for a dense,
+ * data-heavy ops dashboard like this one) and adapted here as a new preset
+ * in the EXISTING theme system, not a one-off rewrite of any page — same
+ * mechanism as the other 5 themes above, so it's opt-in via Settings ->
+ * Theme and every page that already reads `--oms-*` tokens picks it up
+ * automatically with zero per-page changes.
+ *
+ * Deliberately near-black EVERYWHERE (canvas + header + sidebar + surface)
+ * rather than "dark sidebar, light content" like navy-gold/day/ocean — the
+ * point of this 6th option is to be the one genuinely bold, different
+ * choice among the 6, not another variation on the same light-content
+ * layout. Accent is #5e6ad2, an electric violet/lavender-blue kept a touch
+ * softer than pure saturated purple so it stays legible as body-text-
+ * adjacent UI chrome (buttons, focus rings, the active sidebar tile)
+ * rather than reading as a decoration.
+ *
+ * The "specil colour effect" part is the section further below ("Nova
+ * signature effect") — an ambient violet glow behind the sidebar and a
+ * slow pulse on the active nav tile, both scoped to `[data-theme="nova"]`
+ * so the other 5 themes are completely unaffected.
+ */
+[data-theme="nova"] {
+  --oms-canvas: #0a0a0c;
+  --oms-header-bg: #101013;
+  --oms-header-border: #201f26;
+  --oms-sidebar-bg: #050506;
+  --oms-sidebar-border: #1a1a20;
+  --oms-sidebar-tile-bg: rgba(94, 106, 210, 0.08);
+  --oms-sidebar-tile-border: #201f26;
+  --oms-sidebar-text: #f2f2f6;
+  --oms-sidebar-text-muted: #93939f;
+  --oms-surface: #131318;
+  --oms-surface-border: #232229;
+  --oms-text: #f0f0f4;
+  --oms-text-muted: #8f8f9c;
+  --oms-accent: #5e6ad2;
+  --oms-accent-contrast: #ffffff;
+}
+
+/*
  * 2026-08-25 — Motion & interaction system.
  *
  * User feedback (verbatim, Hinglish, with a screenshot of the home-page
@@ -277,6 +321,57 @@ body {
 
 .oms-icon-btn:active {
   transform: scale(0.92);
+}
+
+/*
+ * 2026-09-08 — Nova signature effect: the "specil colour effect" part of
+ * the Nova theme (see the `[data-theme="nova"]` token block above for the
+ * rest of the palette). Two small, theme-scoped touches, both built to
+ * layer painlessly on top of what's already there rather than fighting
+ * stacking contexts:
+ *
+ *   - `.oms-sidebar` (added to both sidebar renders in
+ *     dashboard-sidebar.tsx — the pinned <aside> and the hover-reveal
+ *     overlay <aside>) gets an ambient violet glow. This is done as a
+ *     background-image layer (a radial-gradient) rather than a pseudo-
+ *     element, specifically so it's guaranteed to paint BEHIND the
+ *     sidebar's own content with no z-index bookkeeping — CSS background
+ *     layers are always beneath the content box by definition, so this
+ *     can't ever end up visually covering the nav tiles/text.
+ *   - `.oms-nav-tile` (added to SidebarTile's <Link>, alongside a
+ *     `data-active` attribute mirroring its existing `active` prop) gets a
+ *     slow glowing pulse ONLY on the current page's tile, via box-shadow
+ *     (which also paints outside the element's own box, not over its
+ *     content). Both are entirely inert outside `[data-theme="nova"]` —
+ *     the class names are harmless no-ops on every other theme.
+ */
+[data-theme="nova"] .oms-sidebar {
+  background-image: radial-gradient(
+    ellipse 140% 55% at 50% -15%,
+    color-mix(in srgb, var(--oms-accent) 28%, transparent) 0%,
+    transparent 70%
+  );
+  background-repeat: no-repeat;
+  background-color: var(--oms-sidebar-bg);
+}
+
+[data-theme="nova"] .oms-nav-tile[data-active="true"] {
+  animation: oms-nova-tile-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes oms-nova-tile-pulse {
+  0%, 100% {
+    box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--oms-accent) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 4px 22px 2px color-mix(in srgb, var(--oms-accent) 70%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="nova"] .oms-nav-tile[data-active="true"] {
+    animation: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

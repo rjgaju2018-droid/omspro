@@ -96,7 +96,7 @@ export function DashboardSidebar({ capabilities }: { capabilities: string[] }) {
   // has been read) so there's no flash of the wrong layout.
   if (!mounted || pinned) {
     return (
-      <aside className="flex w-72 flex-col border-r border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)]">
+      <aside className="oms-sidebar flex w-72 flex-col border-r border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)]">
         <div className="flex h-16 items-center justify-between gap-2 border-b border-[var(--oms-sidebar-border)] px-6">
           <span className="text-lg font-bold text-[var(--oms-sidebar-text)]">Work Menu</span>
           <div className="flex items-center gap-1">
@@ -129,7 +129,7 @@ export function DashboardSidebar({ capabilities }: { capabilities: string[] }) {
         <div className="h-10 w-1 rounded-full bg-[var(--oms-sidebar-tile-border)] transition group-hover:bg-[var(--oms-accent)]" />
       </div>
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)] shadow-2xl transition-transform duration-200 ease-out ${
+        className={`oms-sidebar fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)] shadow-2xl transition-transform duration-200 ease-out ${
           hovered ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -186,7 +186,8 @@ function SidebarTile({
       // client-side navigation either way — this only removes the
       // speculative fetch that happened before any click.
       prefetch={false}
-      className={`group flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-4 text-center transition ${
+      data-active={active}
+      className={`oms-nav-tile group flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-4 text-center transition ${
         active
           ? "border-[var(--oms-accent)] bg-[var(--oms-accent)] text-[var(--oms-accent-contrast)] shadow-md shadow-[var(--oms-accent)]/20"
           : "border-[var(--oms-sidebar-tile-border)] bg-[var(--oms-sidebar-tile-bg)] text-[var(--oms-sidebar-text-muted)] hover:-translate-y-0.5 hover:border-[var(--oms-accent)]/40 hover:bg-[var(--oms-sidebar-border)] hover:text-[var(--oms-sidebar-text)] hover:shadow-md"
