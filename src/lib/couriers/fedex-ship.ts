@@ -158,7 +158,20 @@ export async function createFedexShipment(
   }
 
   const body = {
-    labelResponseOptions: "URL_ONLY",
+    // 2026-09-08: was "URL_ONLY" — for this account that came back with no
+    // usable label (shipments booked successfully, tracking number and rate
+    // all present, but shipmentDocuments[].url was never populated), which
+    // is why no label was ever generated for a FedEx test shipment. "LABEL"
+    // asks FedEx to return the label as base64 bytes directly in
+    // shipmentDocuments[].encodedLabel instead of a follow-up URL — this
+    // response-parsing code already had a correct fallback to encodedLabel
+    // (see below) that "URL_ONLY" mode never exercised. "LABEL" mode is
+    // self-contained (no second request, no dependency on a FedEx-side
+    // hosted-label-URL account feature), so it's the safer default even
+    // though FedEx's own docs weren't fully verifiable from here — see the
+    // delivery notes sent with this change for what to check if labels are
+    // still empty after this.
+    labelResponseOptions: "LABEL",
     requestedShipment,
     accountNumber: { value: input.shipper.accountNumber },
   };
