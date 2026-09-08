@@ -3,6 +3,7 @@ import { PrintArea, PrintButton } from "@/components/print-view";
 import type { OrderStatusSummary } from "@/lib/orders/order-status-summary";
 import type { VendorAssignmentCycle } from "../vendor-assignment-actions";
 import { VendorAssignmentSection } from "./vendor-assignment-section";
+import { composeBuyerNameAndAddress } from "@/lib/compose-buyer-address";
 
 // Read-only order detail/print view — mirrors invoice-view.tsx's structure
 // (header block -> info grids -> item table -> value breakdown -> footer)
@@ -158,7 +159,15 @@ export function OrderPrintSheet({
           <div className="mb-3 grid grid-cols-2 gap-4 border-b border-slate-300 pb-3">
             <div>
               <div className="font-semibold">Buyer / Consignee</div>
-              <div className="whitespace-pre-wrap">{order.buyer_name_address || "—"}</div>
+              {/* 2026-09-08 (follow-up): composed from Buyer Name +
+                  Structured Address instead of printing buyer_name_address
+                  alone — that field is now name-only for orders entered
+                  after this change (see order-form.tsx), so printing it by
+                  itself would drop the address off the packing slip.
+                  composeBuyerNameAndAddress() falls back to the raw field
+                  unchanged for older orders that still hold the full
+                  name+address blob there. */}
+              <div className="whitespace-pre-wrap">{composeBuyerNameAndAddress(order) || "—"}</div>
               {order.contact_no && <div className="mt-1">Phone: {order.contact_no}</div>}
               {order.email_id && <div>Email: {order.email_id}</div>}
               <div className="mt-1 text-[10px] text-slate-500">{order.address_type}</div>
@@ -166,18 +175,6 @@ export function OrderPrintSheet({
             <div>
               <div className="font-semibold">Destination</div>
               <div>{order.destination_country || "—"}</div>
-              {(order.buyer_address1 || order.buyer_city || order.buyer_state || order.buyer_postal_code) && (
-                <div className="mt-1 text-[10px] text-slate-500">
-                  {[order.buyer_address1, order.buyer_address2, order.buyer_address3]
-                    .filter(Boolean)
-                    .join(", ")}
-                  {(order.buyer_address1 || order.buyer_address2 || order.buyer_address3) &&
-                  (order.buyer_city || order.buyer_state || order.buyer_postal_code)
-                    ? " — "
-                    : ""}
-                  {[order.buyer_city, order.buyer_state, order.buyer_postal_code].filter(Boolean).join(", ")}
-                </div>
-              )}
               {vendorName && (
                 <>
                   <div className="mt-2 font-semibold">Purchased From</div>

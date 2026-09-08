@@ -8,12 +8,30 @@ import {
   type ShipglobalCreateState,
 } from "./actions";
 import { SHIPGLOBAL_SERVICES } from "@/lib/couriers/shipglobal";
+import { lookupPostalCode } from "@/lib/postal-lookup";
 
 const lookupInitial: ShipglobalLookupState = { error: null, order: null };
 const createInitial: ShipglobalCreateState = { error: null, success: false, trackingNo: null, shipmentId: null };
 const inputClass =
   "w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500";
 const labelClass = "mb-1 block text-xs font-medium text-slate-500";
+
+// 2026-09-08 (follow-up): plain DOM read/write, matching this form's
+// existing uncontrolled defaultValue-input style — only one instance of
+// this form exists per page, so the static ids are safe.
+async function handleShipPostalBlur() {
+  const postalCode = (document.getElementById("ship_postcode") as HTMLInputElement | null)?.value ?? "";
+  const country = (document.getElementById("ship_country_code") as HTMLInputElement | null)?.value ?? "";
+  if (!postalCode.trim()) return;
+
+  const result = await lookupPostalCode(postalCode, country);
+  if (!result) return;
+
+  const cityInput = document.getElementById("ship_city") as HTMLInputElement | null;
+  const stateInput = document.getElementById("ship_state") as HTMLInputElement | null;
+  if (cityInput && !cityInput.value.trim()) cityInput.value = result.city;
+  if (stateInput && !stateInput.value.trim()) stateInput.value = result.state;
+}
 
 // Two-step flow: (1) find the order by Ref No. and prefill whatever this
 // app already knows (dispatch_invoices, if a manual dispatch already
@@ -149,15 +167,27 @@ export function CreateShipmentForm() {
               </div>
               <div>
                 <label className={labelClass}>City *</label>
-                <input name="ship_city" required defaultValue={order.buyerCity ?? ""} className={inputClass} />
+                <input id="ship_city" name="ship_city" required defaultValue={order.buyerCity ?? ""} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Postcode *</label>
-                <input name="ship_postcode" required defaultValue={order.buyerPostalCode ?? ""} className={inputClass} />
+                {/* 2026-09-08 (follow-up): same postcode -> City/State
+                    auto-fetch as the order-entry forms and the main courier
+                    booking screen — "har us entry ke liye jaha jaha jarurat
+                    padegi". Only fills City/State when still empty. */}
+                <input
+                  id="ship_postcode"
+                  name="ship_postcode"
+                  required
+                  defaultValue={order.buyerPostalCode ?? ""}
+                  onBlur={handleShipPostalBlur}
+                  className={inputClass}
+                />
               </div>
               <div>
                 <label className={labelClass}>Country Code * (2-letter)</label>
                 <input
+                  id="ship_country_code"
                   name="ship_country_code"
                   required
                   maxLength={2}
@@ -167,7 +197,7 @@ export function CreateShipmentForm() {
               </div>
               <div>
                 <label className={labelClass}>State *</label>
-                <input name="ship_state" required defaultValue={order.buyerState ?? ""} className={inputClass} />
+                <input id="ship_state" name="ship_state" required defaultValue={order.buyerState ?? ""} className={inputClass} />
               </div>
             </div>
           </div>

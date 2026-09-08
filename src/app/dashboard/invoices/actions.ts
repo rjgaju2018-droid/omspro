@@ -8,6 +8,7 @@ import { computeValueBreakdown } from "@/lib/invoices/value-breakdown";
 import { amountInWords } from "@/lib/invoices/number-to-words";
 import { dutyPayableByForShipmentTerm } from "@/lib/invoices/duty-payable";
 import { computeCurrencyConversion } from "@/lib/orders/currency";
+import { composeBuyerNameAndAddress } from "@/lib/compose-buyer-address";
 import { revalidatePath } from "next/cache";
 
 export type InvoiceFormState = {
@@ -156,7 +157,7 @@ export async function generateInvoiceCore(
   const { data: orders, error: ordersError } = await supabase
     .from("orders")
     .select(
-      "id, company_id, store_id, buyer_name_address, order_value_usd, order_value_original, order_currency, invoice_id, status, vat_number, eori_number, ioss_number, destination_country, contact_no, email_id"
+      "id, company_id, store_id, buyer_name_address, buyer_address1, buyer_address2, buyer_address3, buyer_city, buyer_state, buyer_postal_code, order_value_usd, order_value_original, order_currency, invoice_id, status, vat_number, eori_number, ioss_number, destination_country, contact_no, email_id"
     )
     .in("id", orderIds);
   if (ordersError || !orders || orders.length !== orderIds.length) {
@@ -332,7 +333,14 @@ export async function generateInvoiceCore(
       length_cm: lengthCm,
       width_cm: widthCm,
       height_cm: heightCm,
-      buyer_name_address: buyerNameAddressOverride || orders[0].buyer_name_address || "",
+      // 2026-09-08 (follow-up): orders.buyer_name_address is now name-only
+      // for orders entered after that change (see order-form.tsx) — compose
+      // the full printable name+address block from it plus the structured
+      // fields for the CSB-V export invoice, which needs the complete
+      // address for customs. Falls back to the raw field unchanged for
+      // older orders that still hold the full blob there. An explicit
+      // override typed on the Generate Invoice form still wins either way.
+      buyer_name_address: buyerNameAddressOverride || composeBuyerNameAndAddress(orders[0]) || "",
       remark,
       value_percent: valuePercent,
       invoice_value_usd: invoiceValueUsd,

@@ -319,9 +319,26 @@ export function OrderForm({
       <fieldset className="space-y-4">
         <legend className="mb-1 text-sm font-semibold text-slate-900">Buyer</legend>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className={labelClass} htmlFor="buyer_name_address">Buyer Name &amp; Address</label>
-            <textarea id="buyer_name_address" name="buyer_name_address" rows={2} className={inputClass} />
+          <div>
+            {/* 2026-09-08 (follow-up): relabeled from "Buyer Name & Address"
+                to plain "Buyer Name" and shrunk from a textarea to a single
+                line, per explicit feedback that keeping a combined
+                name+address box right next to the new Structured Address
+                section below was confusing — two places to type the same
+                address. This field is now name-only for any order entered
+                from here on; the DB column is still called
+                buyer_name_address (unchanged, to avoid a much larger rename
+                ripple across ~40 other files that reference it), and every
+                place that needs the FULL printable address (packing slip,
+                CSB-V invoice auto-pull) now composes it from this name plus
+                the Structured Address fields — see
+                src/lib/compose-buyer-address.ts. Older orders that still
+                have a full multi-line blob here (from before this change)
+                are unaffected: composeBuyerNameAndAddress() falls back to
+                printing this field's raw content as-is whenever the
+                Structured Address fields are empty. */}
+            <label className={labelClass} htmlFor="buyer_name_address">Buyer Name</label>
+            <input id="buyer_name_address" name="buyer_name_address" className={inputClass} />
           </div>
           <div>
             <label className={labelClass} htmlFor="contact_no">Contact No.</label>

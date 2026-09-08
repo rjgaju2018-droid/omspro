@@ -67,12 +67,26 @@ const COUNTRY_CODE_ALIASES: { alias: string; code: string }[] = [
   { alias: "south korea", code: "KR" },
 ].sort((a, b) => b.alias.length - a.alias.length);
 
+const ISO2_RE = /^[a-z]{2}$/i;
+
 function countryCodeFor(countryFreeText: string): string | null {
-  const cleaned = countryFreeText.trim().toLowerCase();
+  const cleaned = countryFreeText.trim();
   if (!cleaned) return null;
+  // Alias dictionary FIRST, then a bare-ISO2-code fallback — deliberately
+  // in that order. Some common everyday abbreviations that people actually
+  // type (e.g. "UK") are exactly 2 letters but are NOT valid ISO-3166
+  // alpha-2 codes themselves (the real code is "GB") — checking aliases
+  // first means "UK" still correctly resolves via the alias table below
+  // instead of being taken literally and sent to zippopotam.us/UK/... as
+  // an invalid code. The bare-code fallback exists for callers that
+  // already hold a real code (e.g. courier-booking's "Country Code *
+  // (2-letter)" field, which the courier's own API also expects as a real
+  // ISO code) rather than a free-text country name.
+  const lower = cleaned.toLowerCase();
   for (const { alias, code } of COUNTRY_CODE_ALIASES) {
-    if (cleaned.includes(alias)) return code;
+    if (lower.includes(alias)) return code;
   }
+  if (ISO2_RE.test(cleaned)) return cleaned.toUpperCase();
   return null;
 }
 
@@ -125,7 +139,10 @@ export async function lookupPostalCode(
   if (!pin) return null;
 
   const country = countryFreeText.trim();
-  const isIndia = country === "" || /india/i.test(country);
+  // Matches a blank country, any free-text form of "India", and the bare
+  // ISO code "IN" (2026-09-08 follow-up — some callers pass a 2-letter
+  // code, see countryCodeFor below).
+  const isIndia = country === "" || /india/i.test(country) || /^in$/i.test(country);
 
   if (isIndia && INDIA_PIN_RE.test(pin)) {
     return lookupIndiaPin(pin);

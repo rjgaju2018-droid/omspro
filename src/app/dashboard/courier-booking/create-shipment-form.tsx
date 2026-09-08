@@ -15,6 +15,7 @@ import {
 } from "./actions";
 import { createManualBooking, type ManualBookingState } from "./manual-booking-actions";
 import { MANUAL_BOOKING_COURIERS, type ManualBookingCourierChoice } from "./manual-booking-config";
+import { lookupPostalCode } from "@/lib/postal-lookup";
 
 const lookupInitial: CourierBookingLookupState = { error: null, order: null };
 const createInitial: CourierBookingCreateState = {
@@ -107,12 +108,41 @@ function ResultBanner({ state }: { state: CourierBookingCreateState }) {
 // has nothing to bind to here. Shipglobal (separate flow, separate form —
 // see shipglobal/create-shipment-form.tsx) DOES take a 3rd line and is
 // defaulted from it there.
+// 2026-09-08 (follow-up): plain DOM read/write (matching this file's
+// existing uncontrolled-input style — these are plain `defaultValue`
+// inputs, not React state) rather than lifting Postcode/City/State/Country
+// into component state just for this. Only one SharedShipmentFields is ever
+// mounted at a time (the parent conditionally renders exactly one courier's
+// block based on the `courier` <select>), so the static ids below never
+// collide.
+async function handleRecipientPostalBlur() {
+  const postalCode = (document.getElementById("recipient_postcode") as HTMLInputElement | null)?.value ?? "";
+  const country = (document.getElementById("recipient_country_code") as HTMLInputElement | null)?.value ?? "";
+  if (!postalCode.trim()) return;
+
+  const result = await lookupPostalCode(postalCode, country);
+  if (!result) return;
+
+  const cityInput = document.getElementById("recipient_city") as HTMLInputElement | null;
+  const stateInput = document.getElementById("recipient_state") as HTMLInputElement | null;
+  if (cityInput && !cityInput.value.trim()) cityInput.value = result.city;
+  if (stateInput && !stateInput.value.trim()) stateInput.value = result.state;
+}
+
 function SharedShipmentFields({ order }: { order: CourierBookingLookupOrder }) {
   return (
     <>
       <div className="border-t border-slate-100 pt-3">
         <p className="mb-2 text-xs font-semibold text-slate-600">Recipient</p>
-        {order.buyerNameAddress && (
+        {/* 2026-09-08 (follow-up): only shown when there's no structured
+            address on the order — that's the legacy case this reference
+            block exists for (buyer_name_address still holding the old
+            combined name+address blob to manually split below). Once an
+            order has structured fields, they already prefill the real
+            inputs below directly, so showing this too would just be
+            redundant (and, for a new order, buyer_name_address is now only
+            a name — nothing useful left to "split"). */}
+        {order.buyerNameAddress && !order.buyerAddress1 && (
           <div className="mb-3">
             <label className={labelClass}>As entered at order time (reference only — split this into the fields below)</label>
             <textarea
@@ -150,19 +180,35 @@ function SharedShipmentFields({ order }: { order: CourierBookingLookupOrder }) {
           </div>
           <div>
             <label className={labelClass}>City *</label>
-            <input name="recipient_city" required defaultValue={order.buyerCity ?? ""} className={inputClass} />
+            <input id="recipient_city" name="recipient_city" required defaultValue={order.buyerCity ?? ""} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>State</label>
-            <input name="recipient_state" defaultValue={order.buyerState ?? ""} className={inputClass} />
+            <input id="recipient_state" name="recipient_state" defaultValue={order.buyerState ?? ""} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Postcode *</label>
-            <input name="recipient_postcode" required defaultValue={order.buyerPostalCode ?? ""} className={inputClass} />
+            {/* 2026-09-08 (follow-up): auto-fetch City/State from the
+                postcode on blur, same as the order-entry forms — "har us
+                entry ke liye jaha jaha jarurat padegi" (auto-fetch wherever
+                it's needed), and re-typing/re-checking the address at
+                booking time is exactly one of those places. Only fills
+                City/State when they're still empty, so a value already
+                pre-filled from the order (or typed by the employee) is
+                never overwritten; both stay ordinary editable inputs. */}
+            <input
+              id="recipient_postcode"
+              name="recipient_postcode"
+              required
+              defaultValue={order.buyerPostalCode ?? ""}
+              onBlur={handleRecipientPostalBlur}
+              className={inputClass}
+            />
           </div>
           <div>
             <label className={labelClass}>Country Code * (2-letter)</label>
             <input
+              id="recipient_country_code"
               name="recipient_country_code"
               required
               maxLength={2}

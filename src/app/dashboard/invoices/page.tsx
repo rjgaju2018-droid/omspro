@@ -50,7 +50,7 @@ export default async function InvoicesPage() {
       supabase
         .from("orders")
         .select(
-          "id, ref_no, ref_no_base, order_date, company_id, store_id, buyer_name_address, contact_no, sku_label, item_category_id, size_label, qty, order_value_original, order_currency, status, dispatch_date, invoice_id"
+          "id, ref_no, ref_no_base, order_date, company_id, store_id, buyer_name_address, buyer_address1, buyer_address2, buyer_address3, buyer_city, buyer_state, buyer_postal_code, destination_country, contact_no, sku_label, item_category_id, size_label, qty, order_value_original, order_currency, status, dispatch_date, invoice_id"
         )
         .eq("company_id", employee.currentCompanyId)
         // Pending item 2 (2026-08-08): a Hold order is fully blocked from

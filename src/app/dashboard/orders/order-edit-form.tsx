@@ -198,8 +198,16 @@ export function OrderEditForm({
           <input id={`tassel_fringes-${order.id}`} name="tassel_fringes" type="checkbox" defaultChecked={!!order.tassel_fringes} className="h-4 w-4 rounded border-slate-300" />
           <label htmlFor={`tassel_fringes-${order.id}`} className="text-xs text-slate-600">Tassel / Fringes</label>
         </div>
-        <div className="sm:col-span-2">
-          <label className={labelClass} htmlFor={`buyer_name_address-${order.id}`}>Buyer Name &amp; Address</label>
+        <div>
+          {/* 2026-09-08 (follow-up): relabeled to plain "Buyer Name" — see
+              the matching comment in order-form.tsx for the full reasoning.
+              Name-only going forward; composeBuyerNameAndAddress() in
+              src/lib/compose-buyer-address.ts builds the full printable
+              address from this plus the Structured Address fields wherever
+              one is needed (packing slip, CSB-V invoice), falling back to
+              this field's raw content unchanged for older orders that still
+              have the old combined name+address blob here. */}
+          <label className={labelClass} htmlFor={`buyer_name_address-${order.id}`}>Buyer Name</label>
           <input id={`buyer_name_address-${order.id}`} name="buyer_name_address" defaultValue={order.buyer_name_address ?? ""} className={inputClass} />
         </div>
         <div>

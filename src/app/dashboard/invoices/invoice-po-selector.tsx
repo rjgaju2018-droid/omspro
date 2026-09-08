@@ -34,6 +34,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { InvoiceGenerateForm } from "./invoice-generate-form";
+import { composeBuyerNameAndAddress } from "@/lib/compose-buyer-address";
 
 type OrderRow = {
   id: string;
@@ -42,6 +43,17 @@ type OrderRow = {
   company_id: string;
   store_id: string;
   buyer_name_address: string | null;
+  // 2026-09-08 (follow-up): buyer_name_address alone is now just the buyer's
+  // name for orders entered after that change — these structured fields let
+  // this screen show the full address (composeBuyerNameAndAddress below) as
+  // the Generate Invoice form's default, instead of just the name.
+  buyer_address1?: string | null;
+  buyer_address2?: string | null;
+  buyer_address3?: string | null;
+  buyer_city?: string | null;
+  buyer_state?: string | null;
+  buyer_postal_code?: string | null;
+  destination_country?: string | null;
   contact_no: string | null;
   sku_label: string | null;
   item_category_id: string | null;
@@ -279,7 +291,7 @@ export function InvoicePoSelector({
                 </h3>
                 <InvoiceGenerateForm
                   orderIds={pendingOrders.map((o) => o.id)}
-                  defaultBuyerNameAddress={pendingOrders[0]?.buyer_name_address ?? ""}
+                  defaultBuyerNameAddress={pendingOrders[0] ? composeBuyerNameAndAddress(pendingOrders[0]) : ""}
                 />
               </>
             )}
