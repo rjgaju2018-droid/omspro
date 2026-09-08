@@ -82,6 +82,44 @@ function fedexDutiesPaymentType(ddpDdu: FedexDdpDdu): "SENDER" | "RECIPIENT" {
   return ddpDdu === "DDP" ? "SENDER" : "RECIPIENT";
 }
 
+// 2026-09-08: added after a real 503 — "The service is currently
+// unavailable and we are working to resolve the issue... Please check back
+// at a later time." — surfaced during testing. That exact text is FedEx's
+// own documented generic gateway/maintenance response (FedEx's Developer
+// Portal Best Practices guide has this as boilerplate), not something a
+// request's content can trigger — malformed-request errors from FedEx come
+// back as 400s with field-level detail instead (the state/postal-mismatch
+// and other errors already handled above are examples of that). It's a
+// well-known, chronic pain point specifically on FedEx's sandbox/test host
+// — independent reports describe it as "intermittently unavailable" with
+// no predictable duration, distinct from FedEx's production reliability.
+// Ruled out before treating this as pure FedEx flakiness: the OAuth token
+// is fetched fresh on every single call (see getFedexAccessToken — no
+// caching, so it can't be a stale/expired token), and FEDEX_API_BASE is
+// one fixed, unchanged env var, so a wrong host isn't silently varying
+// between calls either. That leaves genuine transient FedEx-side
+// unavailability as the remaining explanation, which is exactly the kind
+// of failure a short backoff-and-retry is meant for — retries ONLY on
+// 502/503/504 (gateway-level failures); a 400 (bad request), 401 (bad
+// auth) etc. fails immediately as before, since retrying those would just
+// get the same rejection every time.
+const RETRYABLE_GATEWAY_STATUSES = new Set([502, 503, 504]);
+const RETRY_DELAYS_MS = [1500, 3500]; // 2 retries: ~1.5s, then ~3.5s after that
+
+async function fetchWithRetryOnGatewayError(url: string, options: RequestInit): Promise<{ res: Response; text: string }> {
+  let attemptRes: Response;
+  let attemptText: string;
+  for (let attempt = 0; ; attempt++) {
+    attemptRes = await fetch(url, options);
+    attemptText = await attemptRes.text();
+    const isLastAttempt = attempt >= RETRY_DELAYS_MS.length;
+    if (attemptRes.ok || !RETRYABLE_GATEWAY_STATUSES.has(attemptRes.status) || isLastAttempt) {
+      return { res: attemptRes, text: attemptText };
+    }
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+  }
+}
+
 export async function createFedexShipment(
   input: FedexShipInput,
   credentials?: { client_id?: string; client_secret?: string }
@@ -169,7 +207,7 @@ export async function createFedexShipment(
     accountNumber: { value: input.shipper.accountNumber },
   };
 
-  const res = await fetch(`${FEDEX_API_BASE}/ship/v1/shipments`, {
+  const { res, text } = await fetchWithRetryOnGatewayError(`${FEDEX_API_BASE}/ship/v1/shipments`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -178,7 +216,6 @@ export async function createFedexShipment(
     },
     body: JSON.stringify(body),
   });
-  const text = await res.text();
   // Both fields below were fixed 2026-09-08 against a REAL FedEx sandbox
   // response the user captured and pasted back — not FedEx's public docs
   // (which this project's rules treat as unreliable on their own; see the
@@ -217,14 +254,18 @@ export async function createFedexShipment(
     };
     errors?: Array<{ message?: string; code?: string }>;
   };
+  // A 502/503/504 already went through fetchWithRetryOnGatewayError's
+  // retries above by the time we get here — note that in the thrown
+  // message so it's clear this isn't a first-try failure.
+  const retriedNote = RETRYABLE_GATEWAY_STATUSES.has(res.status) ? " (already retried automatically — this is FedEx's own service, not this app, still not responding)" : "";
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error(`FedEx Ship API returned non-JSON response (${res.status}): ${text.slice(0, 500)}`);
+    throw new Error(`FedEx Ship API returned non-JSON response (${res.status}${retriedNote}): ${text.slice(0, 500)}`);
   }
   if (!res.ok) {
     const msg = parsed.errors?.map((e) => e.message).filter(Boolean).join("; ") || text.slice(0, 500);
-    throw new Error(`FedEx Ship API failed ${res.status}: ${msg}`);
+    throw new Error(`FedEx Ship API failed ${res.status}${retriedNote}: ${msg}`);
   }
 
   const shipment = parsed.output?.transactionShipments?.[0];
