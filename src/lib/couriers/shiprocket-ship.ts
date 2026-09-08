@@ -6,12 +6,33 @@
 // to Shiprocket too "if it's a small marginal addition once the pattern
 // exists" — Shiprocket's API genuinely is the simplest of the 5 (plain
 // REST, email+password login like Shipglobal, no SOAP/OAuth2), so it is
-// included rather than skipped. It is domestic-India-primary but does
-// support international via a separate endpoint — this client only
-// implements the DOMESTIC adhoc-order flow (`orders/create/adhoc` +
-// `courier/assign/awb`), the one this app's other 4 new couriers don't
-// already cover well; international Shiprocket booking is NOT built this
-// round (flagged, not silently assumed done).
+// included rather than skipped.
+//
+// 2026-09-08 correction: an earlier version of this comment claimed
+// Shiprocket "does support international via a separate endpoint" and that
+// this client "only implements the DOMESTIC adhoc-order flow" pending that
+// other endpoint. That was an unverified assumption typed in before anyone
+// actually checked, and it turned out to be wrong: Shiprocket's own support
+// site (support.shiprocket.in's API Document Helpsheet, a primary source)
+// confirms there is only ONE order-creation endpoint in the whole
+// documented public API — `orders/create/adhoc` — described as designed
+// for all order types "without differentiation for international
+// shipments." There is no separate international endpoint to be missing.
+// ("Shiprocket X" is the name of their cross-border product, but it is
+// presented as a dashboard product, not as a separately documented API.)
+//
+// Given that, `createShiprocketShipment` below already IS the whole story:
+// it builds one request against that one endpoint, and `billing.country`
+// is passed straight through as free text into `billing_country` — this
+// file never hardcodes "India" anywhere. International destinations
+// should work through this same client PROVIDED the connected Shiprocket
+// account has international couriers enabled/serviceable on Shiprocket's
+// OWN dashboard — that's account configuration on Shiprocket's side that
+// this app has no way to control or verify from here. If
+// `courier/assign/awb` fails for an international destination (e.g. no
+// serviceable international courier enabled on the account), the error
+// thrown below already surfaces Shiprocket's own failure `message`
+// verbatim, so that reason will be visible to whoever is booking.
 //
 // TWO-STEP like Shipglobal: (1) orders/create/adhoc creates the order on
 // Shiprocket's side, (2) courier/assign/awb picks a courier + generates
@@ -46,7 +67,18 @@ export type ShiprocketShipInput = {
     phone: string;
     email: string;
   };
-  item: { name: string; sku: string; units: number; sellingPrice: number };
+  item: {
+    name: string;
+    sku: string;
+    units: number;
+    sellingPrice: number;
+    // 2026-09-08: HSN/customs tariff code, commonly required on
+    // export/customs documentation for an international shipment. Optional
+    // and additive — see the `hsn` comment at the order_items[] call site
+    // below for why the exact field name is unconfirmed against a live
+    // account.
+    hsnCode?: string | null;
+  };
   paymentMethod: "Prepaid" | "COD";
   subTotal: number;
   packageWeightKg: number;
@@ -113,7 +145,26 @@ export async function createShiprocketShipment(
       billing_email: input.billing.email,
       billing_phone: input.billing.phone,
       shipping_is_billing: true,
-      order_items: [{ name: input.item.name, sku: input.item.sku, units: input.item.units, selling_price: input.item.sellingPrice }],
+      order_items: [
+        {
+          name: input.item.name,
+          sku: input.item.sku,
+          units: input.item.units,
+          selling_price: input.item.sellingPrice,
+          // Best-effort, unconfirmed against a live account — same caveat
+          // as parseAddOrderAmount in shipglobal.ts: `hsn` is the field
+          // name Shiprocket's docs use elsewhere for this concept, but no
+          // live order_items[] response/request pair confirms it's the
+          // right key for THIS endpoint specifically. Only sent when the
+          // caller actually has an HSN code to offer (never guessed), and
+          // if the key name turns out to be wrong once tried against a
+          // real account, REST APIs typically just ignore an unrecognized
+          // JSON key rather than reject the request — so this is low-risk
+          // to ship unconfirmed, but say so plainly rather than implying
+          // it's verified.
+          ...(input.item.hsnCode ? { hsn: input.item.hsnCode } : {}),
+        },
+      ],
       payment_method: input.paymentMethod,
       sub_total: input.subTotal,
       length: input.packageDimsCm.length,

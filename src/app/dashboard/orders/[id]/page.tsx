@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getAuthedEmployee } from "@/lib/auth/require-capability";
 import { createClient } from "@/lib/supabase/server";
 import { getOrderStatusSummaries } from "@/lib/orders/order-status-summary";
+import { listVendorAssignments } from "../vendor-assignment-actions";
 import { OrderView } from "./order-view";
 
 // Order detail / view page (2026-08-22) — until now the Orders hub
@@ -46,7 +47,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const { data: order } = await supabase
     .from("orders")
     .select(
-      "id, ref_no, company_id, store_id, order_date, po_date, delivery_date, dispatch_date, status, shipment_status, marketplace_order_no, buyer_name_address, contact_no, email_id, address_type, destination_country, item_category_id, sku_label, size_label, qty, colour, photo_type, photo_url, order_currency, order_value_original, order_value_usd, order_value_inr, exchange_rate_source, invoice_id, vendor_party_id, remark, entry_timestamp, advance_tracking, final_tracking"
+      "id, ref_no, company_id, store_id, order_date, po_date, delivery_date, dispatch_date, status, shipment_status, marketplace_order_no, buyer_name_address, contact_no, email_id, address_type, destination_country, buyer_address1, buyer_address2, buyer_address3, buyer_city, buyer_state, buyer_postal_code, item_category_id, sku_label, size_label, qty, colour, photo_type, photo_url, order_currency, order_value_original, order_value_usd, order_value_inr, exchange_rate_source, invoice_id, vendor_party_id, remark, entry_timestamp, advance_tracking, final_tracking"
     )
     .eq("id", id)
     .maybeSingle();
@@ -59,7 +60,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   // Purchase Bill vendor when one exists, so that query was folded into this
   // one call instead of kept as a second, less-accurate source of the same
   // fact.
-  const [{ data: company }, { data: store }, { data: itemCategory }, { data: invoice }, { data: debitNotes }, { data: creditNotes }, statusByOrder] =
+  const [{ data: company }, { data: store }, { data: itemCategory }, { data: invoice }, { data: debitNotes }, { data: creditNotes }, statusByOrder, { data: parties }, vendorAssignments] =
     await Promise.all([
       supabase.from("companies").select("id, name, logo_url").eq("id", order.company_id).single(),
       supabase.from("stores").select("id, name").eq("id", order.store_id).single(),
@@ -87,6 +88,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           final_tracking: order.final_tracking,
         },
       ]),
+      // 2026-09-08 — parties list for the new Vendor Assignment History
+      // section's "assign to a party" select. Same plain id/name fetch
+      // order-form.tsx/order-edit-form.tsx already use for their own
+      // (unrelated) "Purchasing From" select.
+      supabase.from("parties").select("id, name").order("name"),
+      listVendorAssignments(id),
     ]);
 
   const statusSummary = statusByOrder[order.id];
@@ -108,6 +115,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       statusSummary={statusSummary ?? null}
       debitNotes={(debitNotes ?? []).map((d) => ({ ...d, debit_amount: Number(d.debit_amount) }))}
       creditNotes={(creditNotes ?? []).map((c) => ({ ...c, refund_amount: Number(c.refund_amount) }))}
+      vendorAssignmentParties={parties ?? []}
+      vendorAssignmentCycles={vendorAssignments}
     />
   );
 }

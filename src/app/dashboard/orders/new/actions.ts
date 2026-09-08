@@ -116,6 +116,16 @@ type CreateOrderInput = {
   eoriNumber: string | null;
   iossNumber: string | null;
   destinationCountry: string | null;
+  // 2026-09-08 additions — see
+  // db/2026-09-08-order-address-fields-and-vendor-assignments.sql. Country
+  // is NOT duplicated here — destinationCountry above is reused as this
+  // structured address's Country field.
+  buyerAddress1: string | null;
+  buyerAddress2: string | null;
+  buyerAddress3: string | null;
+  buyerCity: string | null;
+  buyerState: string | null;
+  buyerPostalCode: string | null;
   // 2026-08-20 — Gap 2 of the 5-gaps plan (see
   // claude/five-gaps-implementation-plan-2026-08-20.md): which vendor
   // Party this order's goods are LIKELY being purchased from, filled in at
@@ -312,7 +322,25 @@ export async function createOrderCore(
     .eq("ref_no_base", baseRefNo);
   let siblingCount = existingSiblingsToday ?? 0;
 
-  const { poDate, deliveryDate, emailId, taxId, addressType, remark, vatNumber, eoriNumber, iossNumber, destinationCountry, vendorPartyId } = input;
+  const {
+    poDate,
+    deliveryDate,
+    emailId,
+    taxId,
+    addressType,
+    remark,
+    vatNumber,
+    eoriNumber,
+    iossNumber,
+    destinationCountry,
+    vendorPartyId,
+    buyerAddress1,
+    buyerAddress2,
+    buyerAddress3,
+    buyerCity,
+    buyerState,
+    buyerPostalCode,
+  } = input;
 
   // 2026-08-17 performance fix — computeCurrencyConversion() can fall
   // through to an external HTTP call (api.frankfurter.app, 5s timeout) when
@@ -377,6 +405,12 @@ export async function createOrderCore(
       eori_number: eoriNumber,
       ioss_number: iossNumber,
       destination_country: destinationCountry,
+      buyer_address1: buyerAddress1,
+      buyer_address2: buyerAddress2,
+      buyer_address3: buyerAddress3,
+      buyer_city: buyerCity,
+      buyer_state: buyerState,
+      buyer_postal_code: buyerPostalCode,
       vendor_party_id: vendorPartyId,
       photo_type: item.photoType,
       colour: item.colour,
@@ -469,6 +503,12 @@ export async function createOrder(_prev: OrderFormState, formData: FormData): Pr
     eoriNumber: strOrNull(formData, "eori_number"),
     iossNumber: strOrNull(formData, "ioss_number"),
     destinationCountry: strOrNull(formData, "destination_country"),
+    buyerAddress1: strOrNull(formData, "buyer_address1"),
+    buyerAddress2: strOrNull(formData, "buyer_address2"),
+    buyerAddress3: strOrNull(formData, "buyer_address3"),
+    buyerCity: strOrNull(formData, "buyer_city"),
+    buyerState: strOrNull(formData, "buyer_state"),
+    buyerPostalCode: strOrNull(formData, "buyer_postal_code"),
     vendorPartyId: strOrNull(formData, "vendor_party_id"),
   });
 
@@ -687,6 +727,15 @@ export async function bulkCreateOrders(_prev: BulkOrderState, formData: FormData
       eoriNumber: cellStr(raw, byHeader, "EORI Number") || null,
       iossNumber: cellStr(raw, byHeader, "IOSS Number") || null,
       destinationCountry: cellStr(raw, byHeader, "Destination Country") || null,
+      // 2026-09-08 additions — not CSV columns; structured address is filled
+      // in later via the Orders hub's inline edit (order-edit-form.tsx) if
+      // needed, same treatment as vendorPartyId below.
+      buyerAddress1: null,
+      buyerAddress2: null,
+      buyerAddress3: null,
+      buyerCity: null,
+      buyerState: null,
+      buyerPostalCode: null,
       vendorPartyId: null, // not a CSV column — vendor is set/edited later via the Orders hub, see Gap 2 note above.
       items: [item],
     });

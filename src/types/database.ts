@@ -4234,6 +4234,67 @@ export type Database = {
           },
         ];
       };
+      order_vendor_assignments: {
+        Row: {
+          id: string;
+          order_id: string;
+          cycle_no: number;
+          party_id: string;
+          assigned_date: string;
+          received_date: string | null;
+          remark: string | null;
+          created_by_employee_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          cycle_no: number;
+          party_id: string;
+          assigned_date: string;
+          received_date?: string | null;
+          remark?: string | null;
+          created_by_employee_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          cycle_no?: number;
+          party_id?: string;
+          assigned_date?: string;
+          received_date?: string | null;
+          remark?: string | null;
+          created_by_employee_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_vendor_assignments_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_vendor_assignments_party_id_fkey";
+            columns: ["party_id"];
+            isOneToOne: false;
+            referencedRelation: "parties";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_vendor_assignments_created_by_employee_id_fkey";
+            columns: ["created_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       orders: {
         Row: {
           id: string;
@@ -4262,6 +4323,12 @@ export type Database = {
           estimated_dispatch_date: string | null;
           late_order: boolean;
           buyer_name_address: string | null;
+          buyer_address1: string | null;
+          buyer_address2: string | null;
+          buyer_address3: string | null;
+          buyer_city: string | null;
+          buyer_state: string | null;
+          buyer_postal_code: string | null;
           contact_no: string | null;
           email_id: string | null;
           tax_id: string | null;
@@ -4315,6 +4382,12 @@ export type Database = {
           estimated_dispatch_date?: string | null;
           late_order?: boolean;
           buyer_name_address?: string | null;
+          buyer_address1?: string | null;
+          buyer_address2?: string | null;
+          buyer_address3?: string | null;
+          buyer_city?: string | null;
+          buyer_state?: string | null;
+          buyer_postal_code?: string | null;
           contact_no?: string | null;
           email_id?: string | null;
           tax_id?: string | null;
@@ -4368,6 +4441,12 @@ export type Database = {
           estimated_dispatch_date?: string | null;
           late_order?: boolean;
           buyer_name_address?: string | null;
+          buyer_address1?: string | null;
+          buyer_address2?: string | null;
+          buyer_address3?: string | null;
+          buyer_city?: string | null;
+          buyer_state?: string | null;
+          buyer_postal_code?: string | null;
           contact_no?: string | null;
           email_id?: string | null;
           tax_id?: string | null;

@@ -3,6 +3,7 @@
 import { useActionState, useRef, useEffect, useState, type FormEvent } from "react";
 import { createOrder, checkFinishedStockAction, type OrderFormState } from "./actions";
 import { PhotoUrlField } from "../photo-url-field";
+import { lookupPostalCode } from "@/lib/postal-lookup";
 
 const initialState: OrderFormState = { error: null, success: null };
 
@@ -206,6 +207,29 @@ export function OrderForm({
     if (itemsJsonRef.current) itemsJsonRef.current.value = JSON.stringify(items);
   }
 
+  // 2026-09-08 — Structured Address autofill: on leaving the Postal/Zip
+  // Code field, try to fill City/State from it (see src/lib/postal-lookup.ts
+  // for the two free lookup services and why this never blocks/errors).
+  // Reads Destination Country straight off the DOM, same "uncontrolled,
+  // read by id" convention this form already uses elsewhere (see
+  // handleSubmit above and ItemBlock's checkStock) — no need to lift these
+  // into React state just for this. Only fills City/State when they're
+  // still empty, so a value the employee already typed is never overwritten;
+  // both stay ordinary editable inputs afterward either way.
+  async function handlePostalBlur() {
+    const postalCode = (document.getElementById("buyer_postal_code") as HTMLInputElement | null)?.value ?? "";
+    const country = (document.getElementById("destination_country") as HTMLInputElement | null)?.value ?? "";
+    if (!postalCode.trim()) return;
+
+    const result = await lookupPostalCode(postalCode, country);
+    if (!result) return;
+
+    const cityInput = document.getElementById("buyer_city") as HTMLInputElement | null;
+    const stateInput = document.getElementById("buyer_state") as HTMLInputElement | null;
+    if (cityInput && !cityInput.value.trim()) cityInput.value = result.city;
+    if (stateInput && !stateInput.value.trim()) stateInput.value = result.state;
+  }
+
   return (
     <form ref={formRef} action={formAction} onSubmit={handleSubmit} className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       {state.success && (
@@ -317,6 +341,48 @@ export function OrderForm({
           <div>
             <label className={labelClass} htmlFor="destination_country">Destination Country</label>
             <input id="destination_country" name="destination_country" placeholder="USA / United Kingdom / Germany / ..." className={inputClass} />
+          </div>
+        </div>
+
+        {/* 2026-09-08 — Structured Address: buyer_name_address above stays
+            the single free-text "paste it all in one box" field (kept for
+            packing-slip printing), but courier booking (create-shipment-form
+            .tsx) needs address line(s)/city/state/postcode as separate
+            fields per courier API norms — this is what lets that screen
+            stop asking the employee to re-type the address from scratch at
+            booking time. Destination Country above doubles as this
+            section's Country field — no separate column for it. */}
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <p className="mb-3 text-sm font-semibold text-slate-900">Structured Address</p>
+          <p className="mb-3 text-xs text-slate-500">
+            Used to pre-fill address fields automatically when booking a courier shipment for this order — please
+            fill this in accurately.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className={labelClass} htmlFor="buyer_address1">Address Line 1</label>
+              <input id="buyer_address1" name="buyer_address1" className={inputClass} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelClass} htmlFor="buyer_address2">Address Line 2</label>
+              <input id="buyer_address2" name="buyer_address2" className={inputClass} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelClass} htmlFor="buyer_address3">Address Line 3</label>
+              <input id="buyer_address3" name="buyer_address3" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="buyer_city">City</label>
+              <input id="buyer_city" name="buyer_city" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="buyer_state">State</label>
+              <input id="buyer_state" name="buyer_state" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="buyer_postal_code">Postal / Zip Code</label>
+              <input id="buyer_postal_code" name="buyer_postal_code" className={inputClass} onBlur={handlePostalBlur} />
+            </div>
           </div>
         </div>
 

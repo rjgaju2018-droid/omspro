@@ -140,6 +140,14 @@ export async function updateOrder(_prev: OrderEditState, formData: FormData): Pr
       eori_number: strOrNull(formData, "eori_number"),
       ioss_number: strOrNull(formData, "ioss_number"),
       destination_country: strOrNull(formData, "destination_country"),
+      // 2026-09-08 additions — see
+      // db/2026-09-08-order-address-fields-and-vendor-assignments.sql.
+      buyer_address1: strOrNull(formData, "buyer_address1"),
+      buyer_address2: strOrNull(formData, "buyer_address2"),
+      buyer_address3: strOrNull(formData, "buyer_address3"),
+      buyer_city: strOrNull(formData, "buyer_city"),
+      buyer_state: strOrNull(formData, "buyer_state"),
+      buyer_postal_code: strOrNull(formData, "buyer_postal_code"),
       vendor_party_id: strOrNull(formData, "vendor_party_id"),
       remark: strOrNull(formData, "remark"),
       order_currency: orderCurrency,

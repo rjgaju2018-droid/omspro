@@ -111,7 +111,9 @@ export function CreateShipmentForm() {
           </div>
 
           <div className="border-t border-slate-100 pt-3">
-            <p className="mb-2 text-xs font-semibold text-slate-600">Buyer Shipping Address (not on file — enter fresh)</p>
+            <p className="mb-2 text-xs font-semibold text-slate-600">
+              Buyer Shipping Address {order.buyerAddress1 ? "(prefilled from the order — check before booking)" : "(not on file — enter fresh)"}
+            </p>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               <div>
                 <label className={labelClass}>First Name *</label>
@@ -135,31 +137,37 @@ export function CreateShipmentForm() {
               </div>
               <div>
                 <label className={labelClass}>Address Line 1 *</label>
-                <input name="ship_address1" required className={inputClass} />
+                <input name="ship_address1" required defaultValue={order.buyerAddress1 ?? ""} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Address Line 2 *</label>
-                <input name="ship_address2" required className={inputClass} />
+                <input name="ship_address2" required defaultValue={order.buyerAddress2 ?? ""} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Address Line 3</label>
-                <input name="ship_address3" className={inputClass} />
+                <input name="ship_address3" defaultValue={order.buyerAddress3 ?? ""} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>City *</label>
-                <input name="ship_city" required className={inputClass} />
+                <input name="ship_city" required defaultValue={order.buyerCity ?? ""} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Postcode *</label>
-                <input name="ship_postcode" required className={inputClass} />
+                <input name="ship_postcode" required defaultValue={order.buyerPostalCode ?? ""} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Country Code * (2-letter)</label>
-                <input name="ship_country_code" required maxLength={2} defaultValue={order.buyerCountry ?? ""} className={inputClass} />
+                <input
+                  name="ship_country_code"
+                  required
+                  maxLength={2}
+                  defaultValue={order.buyerDestinationCountry ?? order.buyerCountry ?? ""}
+                  className={inputClass}
+                />
               </div>
               <div>
                 <label className={labelClass}>State *</label>
-                <input name="ship_state" required className={inputClass} />
+                <input name="ship_state" required defaultValue={order.buyerState ?? ""} className={inputClass} />
               </div>
             </div>
           </div>

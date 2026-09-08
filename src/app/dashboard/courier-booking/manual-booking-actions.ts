@@ -157,6 +157,16 @@ export async function createManualBooking(_prev: ManualBookingState, formData: F
   await resyncDispatchSummary(supabase, orderId);
   await supabase.from("orders").update({ shipment_status: "Shipped" }).eq("id", orderId);
 
+  // 2026-09-08: onConflict is (order_id, courier) — picking one of the 6
+  // real courier keys here (e.g. "delhivery") for a manual entry upserts
+  // into the SAME row a real API booking for that courier/order would use.
+  // That's fine for "the API booking failed, I'm recording what actually
+  // happened instead", but it's the wrong choice for something like a
+  // Delhivery INTERNATIONAL booking (made on Delhivery's own dashboard,
+  // no API involved) on an order that might separately get a real
+  // domestic Delhivery API booking — those would collide. The form now
+  // hints at picking "Other" + a free-text name for that case instead
+  // (see the courier-picker hint in create-shipment-form.tsx).
   const { error: attemptError } = await supabase.from("courier_shipments").upsert(
     {
       courier: courierChoice === "other" ? "other" : courierChoice,

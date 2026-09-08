@@ -3,6 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { updateOrder, type OrderEditState } from "./actions";
 import { PhotoUrlField } from "./photo-url-field";
+import { lookupPostalCode } from "@/lib/postal-lookup";
 
 const initialState: OrderEditState = { error: null, success: false };
 
@@ -40,6 +41,16 @@ export type EditableOrder = {
   eori_number: string | null;
   ioss_number: string | null;
   destination_country: string | null;
+  // 2026-09-08 additions — see
+  // db/2026-09-08-order-address-fields-and-vendor-assignments.sql. Country
+  // is NOT duplicated here — destination_country above is reused as this
+  // structured address's Country field.
+  buyer_address1: string | null;
+  buyer_address2: string | null;
+  buyer_address3: string | null;
+  buyer_city: string | null;
+  buyer_state: string | null;
+  buyer_postal_code: string | null;
   // 2026-08-20 — Gap 2 of the 5-gaps plan. See order-list-table.tsx's
   // "Planned vendor" badge and new/order-form.tsx's own field for the
   // full note — this is the primary place it gets set/corrected, since
@@ -75,6 +86,27 @@ export function OrderEditForm({
     if (state.success) onDone();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.success]);
+
+  // 2026-09-08 — Structured Address autofill (see src/lib/postal-lookup.ts
+  // and new/order-form.tsx's matching handler): on leaving the Postal/Zip
+  // Code field, try to fill City/State from it. Reads Destination Country
+  // straight off the DOM by this row's id suffix — this form is otherwise
+  // uncontrolled/defaultValue-based, so no need to lift these into React
+  // state just for this. Only fills City/State when still empty, and both
+  // stay ordinary editable inputs either way.
+  async function handlePostalBlur() {
+    const postalCode = (document.getElementById(`buyer_postal_code-${order.id}`) as HTMLInputElement | null)?.value ?? "";
+    const country = (document.getElementById(`destination_country-${order.id}`) as HTMLInputElement | null)?.value ?? "";
+    if (!postalCode.trim()) return;
+
+    const result = await lookupPostalCode(postalCode, country);
+    if (!result) return;
+
+    const cityInput = document.getElementById(`buyer_city-${order.id}`) as HTMLInputElement | null;
+    const stateInput = document.getElementById(`buyer_state-${order.id}`) as HTMLInputElement | null;
+    if (cityInput && !cityInput.value.trim()) cityInput.value = result.city;
+    if (stateInput && !stateInput.value.trim()) stateInput.value = result.state;
+  }
 
   return (
     <form action={formAction} className="space-y-4 rounded-lg border border-amber-200 bg-amber-50/40 p-4">
@@ -188,6 +220,51 @@ export function OrderEditForm({
         <div>
           <label className={labelClass} htmlFor={`destination_country-${order.id}`}>Destination Country</label>
           <input id={`destination_country-${order.id}`} name="destination_country" defaultValue={order.destination_country ?? ""} className={inputClass} />
+        </div>
+        {/* 2026-09-08 — Structured Address: buyer_name_address above stays
+            the single free-text field (kept for packing-slip printing);
+            these separate address1/2/3/city/state/postcode fields are what
+            courier booking (create-shipment-form.tsx) needs per courier API
+            norms. Destination Country above doubles as this section's
+            Country field — no separate column. */}
+        <div className="sm:col-span-4 rounded-lg border border-slate-200 bg-white p-3">
+          <p className="mb-2 text-xs font-semibold text-slate-700">Structured Address</p>
+          <p className="mb-2 text-[11px] text-slate-400">
+            Used to pre-fill address fields automatically when booking a courier shipment for this order — please
+            fill this in accurately.
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="sm:col-span-2">
+              <label className={labelClass} htmlFor={`buyer_address1-${order.id}`}>Address Line 1</label>
+              <input id={`buyer_address1-${order.id}`} name="buyer_address1" defaultValue={order.buyer_address1 ?? ""} className={inputClass} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelClass} htmlFor={`buyer_address2-${order.id}`}>Address Line 2</label>
+              <input id={`buyer_address2-${order.id}`} name="buyer_address2" defaultValue={order.buyer_address2 ?? ""} className={inputClass} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelClass} htmlFor={`buyer_address3-${order.id}`}>Address Line 3</label>
+              <input id={`buyer_address3-${order.id}`} name="buyer_address3" defaultValue={order.buyer_address3 ?? ""} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor={`buyer_city-${order.id}`}>City</label>
+              <input id={`buyer_city-${order.id}`} name="buyer_city" defaultValue={order.buyer_city ?? ""} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor={`buyer_state-${order.id}`}>State</label>
+              <input id={`buyer_state-${order.id}`} name="buyer_state" defaultValue={order.buyer_state ?? ""} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor={`buyer_postal_code-${order.id}`}>Postal / Zip Code</label>
+              <input
+                id={`buyer_postal_code-${order.id}`}
+                name="buyer_postal_code"
+                defaultValue={order.buyer_postal_code ?? ""}
+                className={inputClass}
+                onBlur={handlePostalBlur}
+              />
+            </div>
+          </div>
         </div>
         <div>
           <label className={labelClass} htmlFor={`vendor_party_id-${order.id}`}>Purchasing From (if known)</label>

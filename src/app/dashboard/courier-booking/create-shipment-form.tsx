@@ -25,7 +25,6 @@ const createInitial: CourierBookingCreateState = {
   bookedCurrency: null,
   bookedAmountSource: null,
   labelUrl: null,
-  invoiceWarning: null,
 };
 const manualBookingInitial: ManualBookingState = { error: null, success: false, shipmentId: null, awbNo: null };
 const inputClass =
@@ -34,12 +33,23 @@ const labelClass = "mb-1 block text-xs font-medium text-slate-500";
 
 type CourierKey = "fedex" | "ups" | "aramex" | "delhivery" | "shiprocket" | "dhl";
 
+// `international` is informational metadata only (not currently used to
+// filter/hide anything in this file) — Delhivery is the one courier here
+// that's genuinely domestic-India-only (no public API for international
+// order creation exists at all, see the Manual Entry hint below for how to
+// record a Delhivery International booking instead). Shiprocket is NOT
+// domestic-only: it has a single unified order-create endpoint that
+// already accepts any billing country (see shiprocket-ship.ts's header
+// comment for the 2026-09-08 correction) — flagged international here
+// accordingly, though actually reaching a working international AWB still
+// depends on the connected Shiprocket account having international
+// couriers enabled on Shiprocket's own dashboard.
 const COURIERS: { key: CourierKey; label: string; international: boolean }[] = [
   { key: "fedex", label: "FedEx", international: true },
   { key: "ups", label: "UPS", international: true },
   { key: "aramex", label: "Aramex", international: true },
   { key: "delhivery", label: "Delhivery (India domestic only)", international: false },
-  { key: "shiprocket", label: "Shiprocket (India domestic only)", international: false },
+  { key: "shiprocket", label: "Shiprocket", international: true },
   { key: "dhl", label: "DHL", international: true },
 ];
 
@@ -71,11 +81,10 @@ function ResultBanner({ state }: { state: CourierBookingCreateState }) {
             </>
           )}
           {!state.labelUrl && state.trackingNo && (
-            <> No label came back in the courier&apos;s booking response — see this shipment&apos;s detail page (via Track Shipments) for the raw API response, which shows exactly what the courier returned (Delhivery/Shiprocket can generate a label on demand there instead; for FedEx/UPS/Aramex/DHL, the raw response is the fastest way to tell if this needs a call to the courier&apos;s support, referencing this tracking number).</>
+            <> No label captured from this booking yet — see the Track Shipments tab (Delhivery/Shiprocket can generate one on demand there; for other couriers, check the courier&apos;s own dashboard).</>
           )}
         </div>
       )}
-      {state.invoiceWarning && <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{state.invoiceWarning}</p>}
     </>
   );
 }
@@ -83,6 +92,21 @@ function ResultBanner({ state }: { state: CourierBookingCreateState }) {
 // Shared fields every courier's form needs (recipient address, package,
 // customs/value) — identical name attributes across all 5 <form>s so the
 // same JSX block can be reused verbatim without prop-drilling every field.
+// 2026-09-08: Address Line 1/2, City, State, Postcode and Country Code now
+// default from orders.buyer_address1/2, buyer_city, buyer_state,
+// buyer_postal_code and destination_country (order.buyerAddress1 etc — see
+// lookupOrderForCourierBooking) when the order has them, while staying
+// plain defaultValue inputs the employee can still edit before submitting.
+// A structured field that's null (order predates these columns) leaves its
+// input blank exactly as before — the read-only "As entered at order time"
+// textarea below stays the fallback reference in that case.
+// No Address Line 3 input here on purpose: none of these 6 couriers'
+// APIs (fedex-ship.ts / ups-ship.ts / aramex-shipping.ts / dhl-ship.ts /
+// delhivery-ship.ts / shiprocket-ship.ts) accept more than address1+address2
+// — order.buyerAddress3 is exposed on the lookup type for completeness but
+// has nothing to bind to here. Shipglobal (separate flow, separate form —
+// see shipglobal/create-shipment-form.tsx) DOES take a 3rd line and is
+// defaulted from it there.
 function SharedShipmentFields({ order }: { order: CourierBookingLookupOrder }) {
   return (
     <>
@@ -118,27 +142,33 @@ function SharedShipmentFields({ order }: { order: CourierBookingLookupOrder }) {
           </div>
           <div>
             <label className={labelClass}>Address Line 1 *</label>
-            <input name="recipient_address1" required className={inputClass} />
+            <input name="recipient_address1" required defaultValue={order.buyerAddress1 ?? ""} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Address Line 2</label>
-            <input name="recipient_address2" className={inputClass} />
+            <input name="recipient_address2" defaultValue={order.buyerAddress2 ?? ""} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>City *</label>
-            <input name="recipient_city" required className={inputClass} />
+            <input name="recipient_city" required defaultValue={order.buyerCity ?? ""} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>State</label>
-            <input name="recipient_state" className={inputClass} />
+            <input name="recipient_state" defaultValue={order.buyerState ?? ""} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Postcode *</label>
-            <input name="recipient_postcode" required className={inputClass} />
+            <input name="recipient_postcode" required defaultValue={order.buyerPostalCode ?? ""} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Country Code * (2-letter)</label>
-            <input name="recipient_country_code" required maxLength={2} defaultValue={order.buyerCountry ?? ""} className={inputClass} />
+            <input
+              name="recipient_country_code"
+              required
+              maxLength={2}
+              defaultValue={order.buyerDestinationCountry ?? order.buyerCountry ?? ""}
+              className={inputClass}
+            />
           </div>
         </div>
       </div>
@@ -469,7 +499,10 @@ export function CreateShipmentForm({ prefill, bookPrefill }: { prefill?: Courier
               <input type="hidden" name="combined_order_ids" value={combinedIdsField} />
               <ResultBanner state={shiprocketState} />
               <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                Domestic adhoc-order flow only this round — see the report for what international Shiprocket booking would need.
+                Single unified order-create flow — works for domestic and international destinations alike (Shiprocket has no
+                separate international endpoint). Whether an international AWB actually assigns still depends on the connected
+                Shiprocket account having international couriers enabled/serviceable on Shiprocket&apos;s own dashboard — if
+                not, the error below will say so.
               </p>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 <div>
@@ -492,6 +525,10 @@ export function CreateShipmentForm({ prefill, bookPrefill }: { prefill?: Courier
                 <div>
                   <label className={labelClass}>Item SKU</label>
                   <input name="item_sku" defaultValue={order.skuLabel ?? ""} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>HSN Code (customs, optional)</label>
+                  <input name="item_hsn_code" defaultValue={order.hsnNo ?? ""} className={inputClass} />
                 </div>
               </div>
               <SharedShipmentFields order={order} />
@@ -585,6 +622,13 @@ export function CreateShipmentForm({ prefill, bookPrefill }: { prefill?: Courier
                         </option>
                       ))}
                     </select>
+                    {manualCourier === "delhivery" && (
+                      <p className="mt-1 text-xs text-amber-700">
+                        For Delhivery International: no public API exists for this (it&apos;s created directly on Delhivery&apos;s
+                        own dashboard) — pick &quot;Other&quot; instead and type &quot;Delhivery International&quot; below, so it
+                        doesn&apos;t collide with a real domestic Delhivery API booking on this order.
+                      </p>
+                    )}
                   </div>
                   {manualCourier === "other" && (
                     <div>

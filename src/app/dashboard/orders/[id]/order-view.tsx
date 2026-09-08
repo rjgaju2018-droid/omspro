@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { PrintArea, PrintButton } from "@/components/print-view";
 import type { OrderStatusSummary } from "@/lib/orders/order-status-summary";
+import type { VendorAssignmentCycle } from "../vendor-assignment-actions";
+import { VendorAssignmentSection } from "./vendor-assignment-section";
 
 // Read-only order detail/print view — mirrors invoice-view.tsx's structure
 // (header block -> info grids -> item table -> value breakdown -> footer)
@@ -26,6 +28,15 @@ export type Order = {
   email_id: string | null;
   address_type: string;
   destination_country: string | null;
+  // 2026-09-08 additions — see
+  // db/2026-09-08-order-address-fields-and-vendor-assignments.sql. Country
+  // is NOT duplicated here — destination_country above is reused.
+  buyer_address1: string | null;
+  buyer_address2: string | null;
+  buyer_address3: string | null;
+  buyer_city: string | null;
+  buyer_state: string | null;
+  buyer_postal_code: string | null;
   sku_label: string | null;
   size_label: string | null;
   qty: number;
@@ -155,6 +166,18 @@ export function OrderPrintSheet({
             <div>
               <div className="font-semibold">Destination</div>
               <div>{order.destination_country || "—"}</div>
+              {(order.buyer_address1 || order.buyer_city || order.buyer_state || order.buyer_postal_code) && (
+                <div className="mt-1 text-[10px] text-slate-500">
+                  {[order.buyer_address1, order.buyer_address2, order.buyer_address3]
+                    .filter(Boolean)
+                    .join(", ")}
+                  {(order.buyer_address1 || order.buyer_address2 || order.buyer_address3) &&
+                  (order.buyer_city || order.buyer_state || order.buyer_postal_code)
+                    ? " — "
+                    : ""}
+                  {[order.buyer_city, order.buyer_state, order.buyer_postal_code].filter(Boolean).join(", ")}
+                </div>
+              )}
               {vendorName && (
                 <>
                   <div className="mt-2 font-semibold">Purchased From</div>
@@ -264,6 +287,8 @@ export function OrderView({
   statusSummary = null,
   debitNotes = [],
   creditNotes = [],
+  vendorAssignmentParties = [],
+  vendorAssignmentCycles = [],
 }: {
   order: Order;
   companyName: string;
@@ -280,6 +305,12 @@ export function OrderView({
   statusSummary?: OrderStatusSummary | null;
   debitNotes?: OrderDebitNote[];
   creditNotes?: OrderCreditNote[];
+  // 2026-09-08 — Vendor Assignment History section (separate from the
+  // "Purchasing From (if known)" vendor_party_id select above and from the
+  // statusSummary.purchasedFromName shown in the status grid) — see
+  // ../vendor-assignment-actions.ts.
+  vendorAssignmentParties?: { id: string; name: string }[];
+  vendorAssignmentCycles?: VendorAssignmentCycle[];
 }) {
   return (
     <div>
@@ -366,6 +397,13 @@ export function OrderView({
           </dl>
         </div>
       )}
+
+      {/* 2026-09-08 — Vendor Assignment History: a separate section (per
+          explicit user request "ek alag section") from both the plain
+          "Purchasing From (if known)" select on the order-edit form and
+          the single purchasedFromName fact in the status grid above — this
+          is the full multi-cycle assign -> receive -> reassign history. */}
+      <VendorAssignmentSection orderId={order.id} parties={vendorAssignmentParties} cycles={vendorAssignmentCycles} />
 
       {/* 2026-08-27 — "kisi order ke against me bhi agar credit debit note
           bana na pade to vo bhi link ho" — see page.tsx's own comment on

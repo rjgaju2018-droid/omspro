@@ -29,6 +29,23 @@ export type ShipglobalLookupOrder = {
   buyerMail: string | null;
   buyerContact: string | null;
   buyerCountry: string | null;
+  // 2026-09-08: structured buyer address (orders.buyer_address1/2/3,
+  // buyer_city, buyer_state, buyer_postal_code) — see
+  // db/2026-09-08-order-address-fields-and-vendor-assignments.sql. Null for
+  // orders entered before these columns existed; the create form's own
+  // "not on file — enter fresh" inputs simply stay blank in that case,
+  // same as before.
+  buyerAddress1: string | null;
+  buyerAddress2: string | null;
+  buyerAddress3: string | null;
+  buyerCity: string | null;
+  buyerState: string | null;
+  buyerPostalCode: string | null;
+  // orders.destination_country — the manually-entered "Destination
+  // Country" field on the Order form. Preferred over buyerCountry (above,
+  // dispatch-time-only / often null pre-dispatch) as the Country Code
+  // default here.
+  buyerDestinationCountry: string | null;
   hsnNo: string | null;
   skuLabel: string | null;
   qty: number;
@@ -62,7 +79,9 @@ export async function lookupOrderForShipglobal(
 
   const { data: orders, error: orderError } = await supabase
     .from("orders")
-    .select("id, ref_no, buyer_name_address, contact_no, email_id, tax_id, sku_label, qty")
+    .select(
+      "id, ref_no, buyer_name_address, contact_no, email_id, tax_id, sku_label, qty, buyer_address1, buyer_address2, buyer_address3, buyer_city, buyer_state, buyer_postal_code, destination_country"
+    )
     .eq("ref_no", refNo)
     .in("company_id", employee.companyIds);
 
@@ -92,6 +111,13 @@ export async function lookupOrderForShipglobal(
       buyerMail: dispatch?.buyer_mail ?? order.email_id,
       buyerContact: dispatch?.buyer_contact ?? order.contact_no,
       buyerCountry: dispatch?.buyer_country ?? null,
+      buyerAddress1: order.buyer_address1,
+      buyerAddress2: order.buyer_address2,
+      buyerAddress3: order.buyer_address3,
+      buyerCity: order.buyer_city,
+      buyerState: order.buyer_state,
+      buyerPostalCode: order.buyer_postal_code,
+      buyerDestinationCountry: order.destination_country,
       hsnNo: dispatch?.hsn_no ?? null,
       skuLabel: order.sku_label,
       qty: order.qty,
