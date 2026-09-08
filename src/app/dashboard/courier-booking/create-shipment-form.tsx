@@ -15,7 +15,7 @@ import {
 } from "./actions";
 import { createManualBooking, type ManualBookingState } from "./manual-booking-actions";
 import { MANUAL_BOOKING_COURIERS, type ManualBookingCourierChoice } from "./manual-booking-config";
-import { lookupPostalCode } from "@/lib/postal-lookup";
+import { lookupPostalCode, countryCodeFor } from "@/lib/postal-lookup";
 
 const lookupInitial: CourierBookingLookupState = { error: null, order: null };
 const createInitial: CourierBookingCreateState = {
@@ -207,12 +207,27 @@ function SharedShipmentFields({ order }: { order: CourierBookingLookupOrder }) {
           </div>
           <div>
             <label className={labelClass}>Country Code * (2-letter)</label>
+            {/* 2026-09-08 (follow-up): orders.destination_country is free
+                text ("USA" / "United Kingdom" / ... — see the Order form's
+                placeholder), NOT a 2-letter code, even though this field's
+                `maxLength` only stops interactive typing — it does nothing
+                to a `defaultValue` set programmatically, so the raw free
+                text used to slip straight through into this "2-letter"
+                field looking valid while actually being e.g. "United
+                States". Run it through the same alias table the postal
+                auto-fill already uses so the box shows a real, resolved
+                code from the start; when nothing resolves, leave it blank
+                so the employee has to type a real one rather than see a
+                wrong value silently pass as if it were fine. The action
+                that submits this (createFedexBooking/Ups/Aramex/Dhl) also
+                re-validates it server-side — this default is a UX
+                convenience, not the actual safety net. */}
             <input
               id="recipient_country_code"
               name="recipient_country_code"
               required
               maxLength={2}
-              defaultValue={order.buyerDestinationCountry ?? order.buyerCountry ?? ""}
+              defaultValue={countryCodeFor(order.buyerDestinationCountry ?? order.buyerCountry ?? "") ?? ""}
               className={inputClass}
             />
           </div>

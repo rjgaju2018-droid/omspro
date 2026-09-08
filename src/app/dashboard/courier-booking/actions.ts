@@ -35,6 +35,7 @@ import { createShiprocketShipment } from "@/lib/couriers/shiprocket-ship";
 import { createDhlShipment, type DhlDdpDdu } from "@/lib/couriers/dhl-ship";
 import { resolveCourierCredentials } from "@/lib/couriers/credentials";
 import { notifyCompanion } from "@/lib/companion/notify";
+import { countryCodeFor } from "@/lib/postal-lookup";
 
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
 type Courier = "fedex" | "ups" | "aramex" | "delhivery" | "shiprocket" | "dhl";
@@ -55,6 +56,33 @@ function numOrNull(formData: FormData, key: string): number | null {
   if (!v) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+// 2026-09-08: root-caused a real FedEx 400 ("Recipient state and postal
+// code mismatch") back to this field. The "Country Code * (2-letter)"
+// input on the shared booking form defaults from orders.destination_country,
+// which is free text ("USA" / "United Kingdom" / ... per the Order form's
+// own placeholder) — not a 2-letter ISO code — and the input's
+// `maxLength={2}` only restricts interactive typing, not a value set via
+// `defaultValue`, so an employee who didn't overwrite it could submit
+// something like "United States" straight through as the courier's
+// countryCode. FedEx's validator, given an unrecognized country code,
+// surfaces that as a confusing state/postal "mismatch" rather than a clear
+// "invalid country" error. Every create*Booking function below now routes
+// the submitted recipient_country_code through here before calling the
+// courier's API, using the SAME alias table the postal-code auto-fill
+// already relies on (@/lib/postal-lookup) — so "US", "USA" and "United
+// States" all resolve the same way this already works for the auto-fill,
+// instead of a 4th near-duplicate normalizer. Unrecognized input surfaces
+// as a clear, actionable form error instead of reaching the courier's API
+// as-is and coming back as an opaque rejection.
+function resolveRecipientCountryCode(formData: FormData): { code: string } | { error: string } {
+  const raw = str(formData, "recipient_country_code");
+  const code = countryCodeFor(raw);
+  if (!code) {
+    return { error: `Recipient Country Code "${raw}" isn't a recognized 2-letter code or country name — enter something like "US", "GB", "AE", or "United States".` };
+  }
+  return { code };
 }
 
 // -----------------------------------------------------------------------
@@ -598,6 +626,9 @@ export async function createFedexBooking(_prev: CourierBookingCreateState, formD
   const shipper = await resolveShipperProfile(supabase, employee.currentCompanyId);
   if (!shipper) return { ...CREATE_INITIAL, error: "No shipper profile set up for this company yet — fill in the shipper profile section above first." };
 
+  const recipientCountry = resolveRecipientCountryCode(formData);
+  if ("error" in recipientCountry) return { ...CREATE_INITIAL, error: recipientCountry.error };
+
   const weightKg = num(formData, "package_weight_kg");
   const dims = { length: num(formData, "package_length_cm"), width: num(formData, "package_width_cm"), height: num(formData, "package_height_cm") };
   const currencyCode = str(formData, "currency_code") || "USD";
@@ -628,7 +659,7 @@ export async function createFedexBooking(_prev: CourierBookingCreateState, formD
       city: str(formData, "recipient_city"),
       state: strOrNull(formData, "recipient_state"),
       postalCode: str(formData, "recipient_postcode"),
-      countryCode: str(formData, "recipient_country_code"),
+      countryCode: recipientCountry.code,
     },
     packageWeightKg: weightKg,
     packageDimsCm: dims,
@@ -745,6 +776,9 @@ export async function createUpsBooking(_prev: CourierBookingCreateState, formDat
   const shipper = await resolveShipperProfile(supabase, employee.currentCompanyId);
   if (!shipper) return { ...CREATE_INITIAL, error: "No shipper profile set up for this company yet — fill in the shipper profile section above first." };
 
+  const recipientCountry = resolveRecipientCountryCode(formData);
+  if ("error" in recipientCountry) return { ...CREATE_INITIAL, error: recipientCountry.error };
+
   const weightKg = num(formData, "package_weight_kg");
   const dims = { length: num(formData, "package_length_cm"), width: num(formData, "package_width_cm"), height: num(formData, "package_height_cm") };
   const currencyCode = str(formData, "currency_code") || "USD";
@@ -774,7 +808,7 @@ export async function createUpsBooking(_prev: CourierBookingCreateState, formDat
       city: str(formData, "recipient_city"),
       state: strOrNull(formData, "recipient_state"),
       postalCode: str(formData, "recipient_postcode"),
-      countryCode: str(formData, "recipient_country_code"),
+      countryCode: recipientCountry.code,
     },
     packageWeightKg: weightKg,
     packageDimsCm: dims,
@@ -891,6 +925,9 @@ export async function createAramexBooking(_prev: CourierBookingCreateState, form
   const shipper = await resolveShipperProfile(supabase, employee.currentCompanyId);
   if (!shipper) return { ...CREATE_INITIAL, error: "No shipper profile set up for this company yet — fill in the shipper profile section above first." };
 
+  const recipientCountry = resolveRecipientCountryCode(formData);
+  if ("error" in recipientCountry) return { ...CREATE_INITIAL, error: recipientCountry.error };
+
   const weightKg = num(formData, "package_weight_kg");
   const dims = { length: num(formData, "package_length_cm"), width: num(formData, "package_width_cm"), height: num(formData, "package_height_cm") };
   const currencyCode = str(formData, "currency_code") || "USD";
@@ -924,7 +961,7 @@ export async function createAramexBooking(_prev: CourierBookingCreateState, form
       city: str(formData, "recipient_city"),
       stateOrProvince: strOrNull(formData, "recipient_state"),
       postCode: str(formData, "recipient_postcode"),
-      countryCode: str(formData, "recipient_country_code"),
+      countryCode: recipientCountry.code,
     },
     packageWeightKg: weightKg,
     packageDimsCm: dims,
@@ -1334,6 +1371,9 @@ export async function createDhlBooking(_prev: CourierBookingCreateState, formDat
   const shipper = await resolveShipperProfile(supabase, employee.currentCompanyId);
   if (!shipper) return { ...CREATE_INITIAL, error: "No shipper profile set up for this company yet — fill in the shipper profile section above first." };
 
+  const recipientCountry = resolveRecipientCountryCode(formData);
+  if ("error" in recipientCountry) return { ...CREATE_INITIAL, error: recipientCountry.error };
+
   const weightKg = num(formData, "package_weight_kg");
   const dims = { length: num(formData, "package_length_cm"), width: num(formData, "package_width_cm"), height: num(formData, "package_height_cm") };
   const currencyCode = str(formData, "currency_code") || "USD";
@@ -1366,7 +1406,7 @@ export async function createDhlBooking(_prev: CourierBookingCreateState, formDat
       city: str(formData, "recipient_city"),
       stateOrProvince: strOrNull(formData, "recipient_state"),
       postalCode: str(formData, "recipient_postcode"),
-      countryCode: str(formData, "recipient_country_code"),
+      countryCode: recipientCountry.code,
     },
     packageWeightKg: weightKg,
     packageDimsCm: dims,

@@ -69,7 +69,24 @@ const COUNTRY_CODE_ALIASES: { alias: string; code: string }[] = [
 
 const ISO2_RE = /^[a-z]{2}$/i;
 
-function countryCodeFor(countryFreeText: string): string | null {
+// 2026-09-08 (follow-up): exported — also used server-side in
+// courier-booking/actions.ts to normalize the "Recipient Country Code"
+// field before it's sent to a courier's Ship API. Root cause of a real
+// FedEx 400 ("Recipient state and postal code mismatch"): that field
+// defaults from orders.destination_country, which is free text (e.g.
+// "United States" — see the placeholder on the Order form's Destination
+// Country input, "USA / United Kingdom / Germany / ..."), NOT a 2-letter
+// ISO code. The field carries a `maxLength={2}` HTML attribute, but
+// maxLength only restricts interactive typing/pasting — it does nothing to
+// a value set programmatically via `defaultValue`, so an employee who
+// didn't overwrite it could submit "United States" (or similar) straight
+// through as the courier API's countryCode. FedEx's own validator, given
+// an unrecognized country code, produces exactly the confusing
+// state/postal "mismatch" error rather than a clear "invalid country"
+// one — this function is now also the server-side safety net that catches
+// that before the request ever reaches FedEx (or UPS/Aramex/DHL, which
+// share the same form field and the same bug).
+export function countryCodeFor(countryFreeText: string): string | null {
   const cleaned = countryFreeText.trim();
   if (!cleaned) return null;
   // Alias dictionary FIRST, then a bare-ISO2-code fallback — deliberately
