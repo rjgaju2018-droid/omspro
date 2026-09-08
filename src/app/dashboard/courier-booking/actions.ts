@@ -36,6 +36,7 @@ import { createDhlShipment, type DhlDdpDdu } from "@/lib/couriers/dhl-ship";
 import { resolveCourierCredentials } from "@/lib/couriers/credentials";
 import { notifyCompanion } from "@/lib/companion/notify";
 import { countryCodeFor } from "@/lib/postal-lookup";
+import { logEntryError } from "@/lib/error-log/log-entry-error";
 
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
 type Courier = "fedex" | "ups" | "aramex" | "delhivery" | "shiprocket" | "dhl";
@@ -627,7 +628,18 @@ export async function createFedexBooking(_prev: CourierBookingCreateState, formD
   if (!shipper) return { ...CREATE_INITIAL, error: "No shipper profile set up for this company yet — fill in the shipper profile section above first." };
 
   const recipientCountry = resolveRecipientCountryCode(formData);
-  if ("error" in recipientCountry) return { ...CREATE_INITIAL, error: recipientCountry.error };
+  if ("error" in recipientCountry) {
+    await logEntryError(supabase, {
+      companyId: employee.currentCompanyId,
+      source: "validation",
+      reason: recipientCountry.error,
+      referenceType: "order",
+      referenceId: orderId,
+      raisedByEmployeeId: employee.id,
+      raisedByName: employee.name,
+    });
+    return { ...CREATE_INITIAL, error: recipientCountry.error };
+  }
 
   const weightKg = num(formData, "package_weight_kg");
   const dims = { length: num(formData, "package_length_cm"), width: num(formData, "package_width_cm"), height: num(formData, "package_height_cm") };
@@ -757,6 +769,7 @@ export async function createFedexBooking(_prev: CourierBookingCreateState, formD
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logAttempt(supabase, { courier: "fedex", orderId, serviceCode: input.serviceType, ddpDdu: input.ddpDdu, status: "failed", errorMessage: message, createdBy: employee.id });
+    await logEntryError(supabase, { companyId: employee.currentCompanyId, source: "courier_api", reason: `FedEx booking failed: ${message}`, referenceType: "order", referenceId: orderId, raisedByEmployeeId: employee.id, raisedByName: employee.name });
     return { ...CREATE_INITIAL, error: message };
   }
 }
@@ -777,7 +790,18 @@ export async function createUpsBooking(_prev: CourierBookingCreateState, formDat
   if (!shipper) return { ...CREATE_INITIAL, error: "No shipper profile set up for this company yet — fill in the shipper profile section above first." };
 
   const recipientCountry = resolveRecipientCountryCode(formData);
-  if ("error" in recipientCountry) return { ...CREATE_INITIAL, error: recipientCountry.error };
+  if ("error" in recipientCountry) {
+    await logEntryError(supabase, {
+      companyId: employee.currentCompanyId,
+      source: "validation",
+      reason: recipientCountry.error,
+      referenceType: "order",
+      referenceId: orderId,
+      raisedByEmployeeId: employee.id,
+      raisedByName: employee.name,
+    });
+    return { ...CREATE_INITIAL, error: recipientCountry.error };
+  }
 
   const weightKg = num(formData, "package_weight_kg");
   const dims = { length: num(formData, "package_length_cm"), width: num(formData, "package_width_cm"), height: num(formData, "package_height_cm") };
@@ -906,6 +930,7 @@ export async function createUpsBooking(_prev: CourierBookingCreateState, formDat
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logAttempt(supabase, { courier: "ups", orderId, serviceCode: input.serviceCode, ddpDdu: input.ddpDdu, status: "failed", errorMessage: message, createdBy: employee.id });
+    await logEntryError(supabase, { companyId: employee.currentCompanyId, source: "courier_api", reason: `UPS booking failed: ${message}`, referenceType: "order", referenceId: orderId, raisedByEmployeeId: employee.id, raisedByName: employee.name });
     return { ...CREATE_INITIAL, error: message };
   }
 }
@@ -926,7 +951,18 @@ export async function createAramexBooking(_prev: CourierBookingCreateState, form
   if (!shipper) return { ...CREATE_INITIAL, error: "No shipper profile set up for this company yet — fill in the shipper profile section above first." };
 
   const recipientCountry = resolveRecipientCountryCode(formData);
-  if ("error" in recipientCountry) return { ...CREATE_INITIAL, error: recipientCountry.error };
+  if ("error" in recipientCountry) {
+    await logEntryError(supabase, {
+      companyId: employee.currentCompanyId,
+      source: "validation",
+      reason: recipientCountry.error,
+      referenceType: "order",
+      referenceId: orderId,
+      raisedByEmployeeId: employee.id,
+      raisedByName: employee.name,
+    });
+    return { ...CREATE_INITIAL, error: recipientCountry.error };
+  }
 
   const weightKg = num(formData, "package_weight_kg");
   const dims = { length: num(formData, "package_length_cm"), width: num(formData, "package_width_cm"), height: num(formData, "package_height_cm") };
@@ -1064,6 +1100,7 @@ export async function createAramexBooking(_prev: CourierBookingCreateState, form
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logAttempt(supabase, { courier: "aramex", orderId, serviceCode: input.productType, ddpDdu, status: "failed", errorMessage: message, createdBy: employee.id });
+    await logEntryError(supabase, { companyId: employee.currentCompanyId, source: "courier_api", reason: `Aramex booking failed: ${message}`, referenceType: "order", referenceId: orderId, raisedByEmployeeId: employee.id, raisedByName: employee.name });
     return { ...CREATE_INITIAL, error: message };
   }
 }
@@ -1194,6 +1231,7 @@ export async function createDelhiveryBooking(_prev: CourierBookingCreateState, f
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logAttempt(supabase, { courier: "delhivery", orderId, status: "failed", errorMessage: message, createdBy: employee.id });
+    await logEntryError(supabase, { companyId: employee.currentCompanyId, source: "courier_api", reason: `Delhivery booking failed: ${message}`, referenceType: "order", referenceId: orderId, raisedByEmployeeId: employee.id, raisedByName: employee.name });
     return { ...CREATE_INITIAL, error: message };
   }
 }
@@ -1345,6 +1383,7 @@ export async function createShiprocketBooking(_prev: CourierBookingCreateState, 
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logAttempt(supabase, { courier: "shiprocket", orderId, status: "failed", errorMessage: message, createdBy: employee.id });
+    await logEntryError(supabase, { companyId: employee.currentCompanyId, source: "courier_api", reason: `Shiprocket booking failed: ${message}`, referenceType: "order", referenceId: orderId, raisedByEmployeeId: employee.id, raisedByName: employee.name });
     return { ...CREATE_INITIAL, error: message };
   }
 }
@@ -1372,7 +1411,18 @@ export async function createDhlBooking(_prev: CourierBookingCreateState, formDat
   if (!shipper) return { ...CREATE_INITIAL, error: "No shipper profile set up for this company yet — fill in the shipper profile section above first." };
 
   const recipientCountry = resolveRecipientCountryCode(formData);
-  if ("error" in recipientCountry) return { ...CREATE_INITIAL, error: recipientCountry.error };
+  if ("error" in recipientCountry) {
+    await logEntryError(supabase, {
+      companyId: employee.currentCompanyId,
+      source: "validation",
+      reason: recipientCountry.error,
+      referenceType: "order",
+      referenceId: orderId,
+      raisedByEmployeeId: employee.id,
+      raisedByName: employee.name,
+    });
+    return { ...CREATE_INITIAL, error: recipientCountry.error };
+  }
 
   const weightKg = num(formData, "package_weight_kg");
   const dims = { length: num(formData, "package_length_cm"), width: num(formData, "package_width_cm"), height: num(formData, "package_height_cm") };
@@ -1505,6 +1555,7 @@ export async function createDhlBooking(_prev: CourierBookingCreateState, formDat
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logAttempt(supabase, { courier: "dhl", orderId, serviceCode: input.productCode, ddpDdu, status: "failed", errorMessage: message, createdBy: employee.id });
+    await logEntryError(supabase, { companyId: employee.currentCompanyId, source: "courier_api", reason: `DHL booking failed: ${message}`, referenceType: "order", referenceId: orderId, raisedByEmployeeId: employee.id, raisedByName: employee.name });
     return { ...CREATE_INITIAL, error: message };
   }
 }

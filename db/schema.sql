@@ -1131,6 +1131,32 @@ CREATE INDEX idx_audit_log_company_date ON audit_log(company_id, created_at DESC
 CREATE INDEX idx_audit_log_entity        ON audit_log(entity_type, entity_id);
 CREATE INDEX idx_audit_log_employee      ON audit_log(employee_id, created_at DESC);
 
+-- 2026-09-08: Error Tab — see db/2026-09-08-error-log.sql for the full
+-- design rationale. A unified review queue for "wrong entries" — form
+-- validation failures, failed courier/API bookings, and manual staff
+-- flags — distinct from audit_log (an admin-mutation trail, no
+-- resolved/pending lifecycle).
+CREATE TABLE entry_errors (
+  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id              uuid REFERENCES companies(id),
+  source                  text NOT NULL CHECK (source IN ('validation', 'courier_api', 'manual')),
+  status                  text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'resolved')),
+  reason                  text NOT NULL,
+  reference_type          text,
+  reference_id            text,
+  reference_label         text,
+  raised_by_employee_id   uuid REFERENCES employees(id),
+  raised_by_name          text NOT NULL,
+  created_at              timestamptz NOT NULL DEFAULT now(),
+  resolved_at             timestamptz,
+  resolved_by_employee_id uuid REFERENCES employees(id),
+  resolved_by_name        text,
+  resolution_notes        text
+);
+CREATE INDEX idx_entry_errors_company_created ON entry_errors(company_id, created_at DESC);
+CREATE INDEX idx_entry_errors_status           ON entry_errors(status, created_at DESC);
+CREATE INDEX idx_entry_errors_reference         ON entry_errors(reference_type, reference_id);
+
 CREATE TABLE automation_rules (
   id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id             uuid REFERENCES companies(id),
@@ -4136,7 +4162,12 @@ INSERT INTO capabilities (code, description) VALUES
   -- on /dashboard/courier-booking) — deliberately its own capability, not
   -- folded into courier_booking_shipment (see capability-info.ts for the
   -- reasoning) — Admin/MD only. See db/2026-09-03-courier-account-setup.sql.
-  ('courier_credentials_admin', 'Enter/edit courier API account credentials (FedEx, UPS, Aramex, Delhivery, Shiprocket, DHL) in the Courier Booking dashboard''s Account Setup tab — Admin/MD only');
+  ('courier_credentials_admin', 'Enter/edit courier API account credentials (FedEx, UPS, Aramex, Delhivery, Shiprocket, DHL) in the Courier Booking dashboard''s Account Setup tab — Admin/MD only'),
+  -- 2026-09-08: Error Tab — see db/2026-09-08-error-log.sql. Gates VIEWING
+  -- and RESOLVING the log only, Admin/MD only, same pattern as
+  -- audit_log_view — raising a manual flag needs no capability at all (any
+  -- signed-in employee).
+  ('error_log_view', 'View and resolve the Error Tab — validation failures, failed courier bookings, and staff-flagged wrong entries — Admin/MD only');
 
 INSERT INTO role_capabilities (role_id, capability_code)
 SELECT r.id, cap FROM roles r
@@ -4200,7 +4231,8 @@ JOIN (VALUES
   ('Admin',              'audit_log_view'), ('MD', 'audit_log_view'), -- 2026-08-24: Audit log, Admin/MD only to start.
   ('Admin',              'automation_admin'), ('MD', 'automation_admin'), -- 2026-08-24: Automation rules engine, Admin/MD only to start.
   ('Admin',              'performance_admin'), ('MD', 'performance_admin'), -- 2026-09-02: Performance & Awards ranking, Admin/MD only.
-  ('Admin',              'courier_credentials_admin'), ('MD', 'courier_credentials_admin') -- 2026-09-03: Courier Account Setup, Admin/MD only.
+  ('Admin',              'courier_credentials_admin'), ('MD', 'courier_credentials_admin'), -- 2026-09-03: Courier Account Setup, Admin/MD only.
+  ('Admin',              'error_log_view'), ('MD', 'error_log_view') -- 2026-09-08: Error Tab, Admin/MD only.
 ) AS rc(role_name, cap) ON rc.role_name = r.name;
 
 

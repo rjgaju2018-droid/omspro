@@ -4,6 +4,7 @@ import type { OrderStatusSummary } from "@/lib/orders/order-status-summary";
 import type { VendorAssignmentCycle } from "../vendor-assignment-actions";
 import { VendorAssignmentSection } from "./vendor-assignment-section";
 import { composeBuyerNameAndAddress } from "@/lib/compose-buyer-address";
+import { FlagErrorButton } from "./flag-error-button";
 
 // Read-only order detail/print view — mirrors invoice-view.tsx's structure
 // (header block -> info grids -> item table -> value breakdown -> footer)
@@ -315,7 +316,10 @@ export function OrderView({
         <Link href="/dashboard/orders" className="text-sm text-slate-500 hover:underline">
           ← Back to Orders
         </Link>
-        <PrintButton label="🖨 Download PDF" />
+        <div className="flex items-center gap-2">
+          <FlagErrorButton orderId={order.id} orderRefNo={order.ref_no} />
+          <PrintButton label="🖨 Download PDF" />
+        </div>
       </div>
 
       <PrintArea id="order-print-area">

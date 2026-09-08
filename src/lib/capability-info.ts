@@ -124,6 +124,12 @@ export const CAPABILITY_INFO: CapabilityInfo[] = [
   // pattern as permissions_admin. See db/2026-09-05-ai-companion-live.sql.
   { code: "companion_admin", label: "AI Companion Access", icon: "🧚", href: "/dashboard/admin/companion-access",
     description: "Turn the live AI companion on/off for specific employees — a per-person switch, not a role permission." },
+  // 2026-09-08: Error Tab — see db/2026-09-08-error-log.sql. Gates VIEWING
+  // and RESOLVING the log (Admin/MD only, same 2 roles as audit_log_view).
+  // Raising a manual flag needs no capability — any signed-in employee can
+  // flag an entry from the order detail page.
+  { code: "error_log_view", label: "Error Tab", icon: "⚠️", href: "/dashboard/error-log",
+    description: "Wrong entries in one place — form validation failures, failed courier bookings, and staff-flagged mistakes, with who/when and a resolved/pending status." },
 ];
 
 export function capabilityInfoFor(code: string): CapabilityInfo | undefined {

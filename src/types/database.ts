@@ -4069,6 +4069,82 @@ export type Database = {
           },
         ];
       };
+      entry_errors: {
+        Row: {
+          id: string;
+          company_id: string | null;
+          source: string;
+          status: string;
+          reason: string;
+          reference_type: string | null;
+          reference_id: string | null;
+          reference_label: string | null;
+          raised_by_employee_id: string | null;
+          raised_by_name: string;
+          created_at: string;
+          resolved_at: string | null;
+          resolved_by_employee_id: string | null;
+          resolved_by_name: string | null;
+          resolution_notes: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          source: string;
+          status?: string;
+          reason: string;
+          reference_type?: string | null;
+          reference_id?: string | null;
+          reference_label?: string | null;
+          raised_by_employee_id?: string | null;
+          raised_by_name: string;
+          created_at?: string;
+          resolved_at?: string | null;
+          resolved_by_employee_id?: string | null;
+          resolved_by_name?: string | null;
+          resolution_notes?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          source?: string;
+          status?: string;
+          reason?: string;
+          reference_type?: string | null;
+          reference_id?: string | null;
+          reference_label?: string | null;
+          raised_by_employee_id?: string | null;
+          raised_by_name?: string;
+          created_at?: string;
+          resolved_at?: string | null;
+          resolved_by_employee_id?: string | null;
+          resolved_by_name?: string | null;
+          resolution_notes?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "entry_errors_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "entry_errors_raised_by_employee_id_fkey";
+            columns: ["raised_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "entry_errors_resolved_by_employee_id_fkey";
+            columns: ["resolved_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       automation_rules: {
         Row: {
           id: string;

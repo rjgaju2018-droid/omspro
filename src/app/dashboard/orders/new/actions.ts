@@ -6,6 +6,7 @@ import { buyerMatchKey } from "@/lib/orders/buyer-match";
 import { parseCountryFromAddress } from "@/lib/geo/parse-country";
 import { computeCurrencyConversion, type ConversionResult } from "@/lib/orders/currency";
 import { notifyCompanion } from "@/lib/companion/notify";
+import { logEntryError } from "@/lib/error-log/log-entry-error";
 import { revalidatePath } from "next/cache";
 
 export type OrderFormState = {
@@ -477,12 +478,30 @@ export async function createOrder(_prev: OrderFormState, formData: FormData): Pr
   const manualRefNo = strOrNull(formData, "manual_ref_no");
 
   if (!storeId || !orderDate) {
-    return { error: "Store and order date are required.", success: null };
+    const reason = "Store and order date are required.";
+    await logEntryError(supabase, {
+      companyId: employee.currentCompanyId,
+      source: "validation",
+      reason,
+      referenceType: "order",
+      raisedByEmployeeId: employee.id,
+      raisedByName: employee.name,
+    });
+    return { error: reason, success: null };
   }
 
   const { items, error: itemsError } = parseItems(formData);
   if (itemsError || !items) {
-    return { error: itemsError ?? "Item details are invalid.", success: null };
+    const reason = itemsError ?? "Item details are invalid.";
+    await logEntryError(supabase, {
+      companyId: employee.currentCompanyId,
+      source: "validation",
+      reason,
+      referenceType: "order",
+      raisedByEmployeeId: employee.id,
+      raisedByName: employee.name,
+    });
+    return { error: reason, success: null };
   }
 
   const result = await createOrderCore(employee, supabase, employee.currentCompanyId, {
@@ -512,7 +531,18 @@ export async function createOrder(_prev: OrderFormState, formData: FormData): Pr
     vendorPartyId: strOrNull(formData, "vendor_party_id"),
   });
 
-  if (result.error) return { error: result.error, success: null };
+  if (result.error) {
+    await logEntryError(supabase, {
+      companyId: employee.currentCompanyId,
+      source: "validation",
+      reason: result.error,
+      referenceType: "order",
+      referenceLabel: manualRefNo,
+      raisedByEmployeeId: employee.id,
+      raisedByName: employee.name,
+    });
+    return { error: result.error, success: null };
+  }
 
   revalidatePath("/dashboard/orders/new");
   revalidatePath("/dashboard/orders");
