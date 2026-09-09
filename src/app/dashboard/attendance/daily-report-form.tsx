@@ -404,6 +404,26 @@ export function DailyReportForm({
   const todayRows = rows.filter((row) => row.logDate === today);
   const backdatedRows = rows.filter((row) => row.logDate !== today);
 
+  // 2026-09-09 — "ek back date me entry nahi ho rahi" (an employee's
+  // report that a backdated entry "isn't going through"). ROOT CAUSE: the
+  // 2026-09-04 grouping above is correct and the save itself was never
+  // broken — but the <details> section below defaults to CLOSED (native
+  // HTML behavior), and the instant an employee changes a row's Date away
+  // from today, that exact row re-renders as a child of THIS closed
+  // <details> instead of the always-visible list above it. From the
+  // employee's side that reads as "I picked yesterday and my entry just
+  // disappeared" — nothing was lost, it just silently moved into a
+  // collapsed accordion they had no reason to think to open. Fix: force
+  // the section open whenever it contains a row still being actively
+  // worked on (not yet submitted) — a real live draft should never be
+  // hidden by default — while still respecting an explicit manual
+  // collapse/expand from the employee for the rest of the session (e.g.
+  // once every backdated row in it is submitted history, they can tuck it
+  // away again).
+  const [backdatedManualOpen, setBackdatedManualOpen] = useState<boolean | null>(null);
+  const hasUnsavedBackdatedDraft = backdatedRows.some((row) => !row.submittedAt);
+  const backdatedOpen = backdatedManualOpen ?? hasUnsavedBackdatedDraft;
+
   function renderRow(row: LogRow) {
     return row.submittedAt ? (
           // 2026-09-01: a "Carried Forward" row is ALSO finalized/read-only
@@ -625,9 +645,16 @@ export function DailyReportForm({
       )}
 
       {backdatedRows.length > 0 && (
-        <details className="rounded-xl border border-slate-200 bg-slate-50">
+        <details
+          open={backdatedOpen}
+          onToggle={(e) => setBackdatedManualOpen(e.currentTarget.open)}
+          className="rounded-xl border border-slate-200 bg-slate-50"
+        >
           <summary className="cursor-pointer select-none rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100">
             🕘 Backdated entries (last 6 days) ({backdatedRows.length})
+            {hasUnsavedBackdatedDraft && (
+              <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">✏️ In progress</span>
+            )}
           </summary>
           <div className="space-y-3 p-3 pt-0">{backdatedRows.map((row) => renderRow(row))}</div>
         </details>
