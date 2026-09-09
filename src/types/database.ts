@@ -7034,6 +7034,59 @@ export type Database = {
         };
         Relationships: [];
       };
+      payments: {
+        Row: {
+          id: string;
+          company_id: string;
+          razorpay_order_id: string | null;
+          razorpay_payment_id: string | null;
+          razorpay_subscription_id: string | null;
+          amount: number;
+          currency: string;
+          plan_id: string;
+          status: string;
+          notes: Json | null;
+          created_at: string;
+          paid_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          razorpay_order_id?: string | null;
+          razorpay_payment_id?: string | null;
+          razorpay_subscription_id?: string | null;
+          amount: number;
+          currency?: string;
+          plan_id: string;
+          status: string;
+          notes?: Json | null;
+          created_at?: string;
+          paid_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          razorpay_order_id?: string | null;
+          razorpay_payment_id?: string | null;
+          razorpay_subscription_id?: string | null;
+          amount?: number;
+          currency?: string;
+          plan_id?: string;
+          status?: string;
+          notes?: Json | null;
+          created_at?: string;
+          paid_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payments_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Functions: {
       trial_status: {

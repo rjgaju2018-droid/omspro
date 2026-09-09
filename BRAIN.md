@@ -1,4 +1,4 @@
-# BRAIN.md — Nyko Mart OMS: system reference
+# BRAIN.md — OMS Pro: system reference
 
 Read this first, before re-reading chat history. Written 2026-08-17 to stop every new session from
 having to re-derive context from scratch. Keep it updated as things change — it's a living doc, not
@@ -6,14 +6,13 @@ a snapshot.
 
 ## 1. What this is
 
-A multi-company Order Management System for three real, currently-operating export/marketplace
-businesses run by the same owner (user "ram", info.nykomart@gmail.com):
+A multi-company Order Management System. Launched 2026-09-09 as **OMS Pro** —
+a public, multi-tenant SaaS where ANY company can self-register (14-day
+trial) and manage its own data with its own team. Originally developed as
+the in-house system for a real export/marketplace group; those companies'
+names are deliberately absent from the product now.
 
-- **Nyko Mart**
-- **Rugara**
-- **CASA ARRA**
-
-They manufacture/source home-textile goods (rugs, kurtis, fabric items) and sell through Amazon,
+They manufactured/sourced home-textile goods (rugs, kurtis, fabric items) and sold through Amazon,
 eBay, Etsy (multiple shops per company), and direct/website orders, exporting internationally. The
 system replaced a Google Sheets + Apps Script system (`Code.gs` + many sheets) that is referenced
 throughout code comments as "the old sheet" / "the old system" — those comments are load-bearing
@@ -26,10 +25,10 @@ happen — treat every bug report as real production impact, not a hypothetical.
 ## 2. Where everything lives
 
 - **Local working clone**: `/home/claude/oms/webapp` (this repo, in the cloud sandbox)
-- **Live production**: `https://nykomart-oms-oohq.vercel.app/` — Vercel, **Hobby plan** (confirmed
+- **Live production**: Vercel (auto-deploys from `main`). Plan limits
   via code comments: hard 2-cron-job cap, 60s max function duration — see
   `src/app/api/cron/poll-fedex-tracking/route.ts`)
-- **GitHub repo**: `infonykomart-ai/nykomart-oms`
+- **GitHub repo**: this repo (`omspro`)
 - **Supabase project**: `https://supabase.com/dashboard/project/coowiuszsjxtnfismmfw` — Postgres +
   Auth + Storage, **Free plan** (relevant: leaked-password protection is Pro-plan-only, currently
   unavailable)

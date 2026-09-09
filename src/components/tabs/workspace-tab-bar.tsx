@@ -65,7 +65,7 @@ export function WorkspaceTabBar() {
         className="ml-1 shrink-0 rounded px-2 py-1 text-[11px] text-[var(--oms-text-muted)] transition hover:text-[var(--oms-text)]"
         title="Close all tabs"
       >
-        Sab band karein
+        Close all
       </button>
     </div>
   );

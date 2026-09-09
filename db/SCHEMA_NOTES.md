@@ -20,7 +20,7 @@ function, not just the ones named in the task).
 |---|---|---|
 | README | — | n/a (this doc + schema.sql header) |
 | Lists | enum types + `item_categories`, `sizes`, `currencies`, `stores` | enum + tables |
-| All_Orders_Master + Nyko Mart + Rugara + CASA ARRA | `orders` | ONE table, `company_id` FK |
+| All_Orders_Master (one sheet per company) | `orders` | ONE table, `company_id` FK |
 | Counters | `sequence_counters` + `reserve_next_number()` | table + function |
 | Company_Stores + Company_Registry | `companies` + `stores` | tables |
 | Employees | `employees` (+ `roles`, `capabilities`, `role_capabilities`) | tables |
@@ -293,7 +293,7 @@ schema is treated as final.
    later.
 
 10. ~~`company_id` added to the statement-family import tables~~ **RESOLVED
-    (2026-08-04).** User confirmed: Rugara and CASA ARRA DO have (or will
+    (2026-08-04).** User confirmed: the group's individual companies DO have (or will
     have) their own separate bank/portal accounts — `company_id` on Bank
     Statement, Etsy Ledger, eBay Transaction Report, eBay Freight Invoice,
     eBay Shipment & Customs Report, eBay Prepaid Wallet Ledger, and eBay Tax

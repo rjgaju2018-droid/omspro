@@ -6,9 +6,9 @@ HR in one dashboard. Any company can self-register from the public landing
 page, get a **14-day free trial** (no card needed), and manage its own data
 with its own team.
 
-Originally built for a real export group (Nyko Mart / Rugara / CASA ARRA,
-Jaipur) — every business rule below was battle-tested in daily production
-before the public SaaS launch.
+Originally built as the in-house system of a real export group — every
+business rule below was battle-tested in daily production before the public
+SaaS launch.
 
 **Proprietary software** — all rights belong to the owner. Developed by
 Mr. Gajanand Bhankariwal — bhankariwal@gmail.com · +91 99830 00552.

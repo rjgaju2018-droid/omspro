@@ -23,34 +23,38 @@ export default function SignupPage() {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-3xl">
               🎉
             </div>
-            <h1 className="text-xl font-semibold text-white">Company ban gayi!</h1>
+            <h1 className="text-xl font-semibold text-white">Your company is ready!</h1>
             <p className="mt-2 text-sm text-slate-400">
-              <strong className="text-slate-200">{state.success.email}</strong> ke sath aapka OMS Pro
-              workspace ready hai — 14 din ka free trial shuru ho gaya hai.
+              Your OMS Pro workspace for{" "}
+              <strong className="text-slate-200">{state.success.email}</strong> is set up — your
+              14-day free trial has started.
             </p>
             <Link
               href="/dashboard"
               className="mt-6 inline-block w-full rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 font-medium text-white shadow-lg transition hover:opacity-90"
             >
-              Dashboard kholein →
+              Open dashboard →
             </Link>
           </div>
         ) : (
           <>
             <div className="mb-8 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 text-2xl font-black text-white shadow-lg">
-                O
-              </div>
-              <h1 className="text-xl font-semibold text-white">Apni company shuru karein</h1>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo-icon.png"
+                alt="OMS Pro logo"
+                className="mx-auto mb-4 h-14 w-14 rounded-2xl shadow-lg"
+              />
+              <h1 className="text-xl font-semibold text-white">Create your company</h1>
               <p className="mt-1 text-sm text-slate-400">
-                14 din ka free trial · card ki zaroorat nahi
+                14-day free trial · no credit card required
               </p>
             </div>
 
             <form action={formAction} className="space-y-4">
               <div>
                 <label htmlFor="your_name" className="mb-1 block text-sm font-medium text-slate-300">
-                  Aapka naam
+                  Your name
                 </label>
                 <input
                   id="your_name"
@@ -64,7 +68,7 @@ export default function SignupPage() {
               </div>
               <div>
                 <label htmlFor="company_name" className="mb-1 block text-sm font-medium text-slate-300">
-                  Company ka naam
+                  Company name
                 </label>
                 <input
                   id="company_name"
@@ -72,7 +76,7 @@ export default function SignupPage() {
                   type="text"
                   required
                   minLength={2}
-                  placeholder="Aapki export / marketplace company"
+                  placeholder="Your export / marketplace company"
                   className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white placeholder-slate-500 outline-none focus:border-amber-500"
                 />
               </div>
@@ -115,14 +119,14 @@ export default function SignupPage() {
                 disabled={pending}
                 className="w-full rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 font-medium text-white shadow-lg transition hover:opacity-90 disabled:opacity-50"
               >
-                {pending ? "Company ban rahe hai…" : "Free trial shuru karein"}
+                {pending ? "Creating your company…" : "Start free trial"}
               </button>
             </form>
 
             <p className="mt-6 text-center text-sm text-slate-400">
-              Pehle se account hai?{" "}
+              Already have an account?{" "}
               <Link href="/login" className="font-medium text-amber-400 hover:text-amber-300">
-                Login karein
+                Log in
               </Link>
             </p>
           </>

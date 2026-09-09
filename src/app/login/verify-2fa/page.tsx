@@ -14,9 +14,9 @@ export default function VerifyTwoFactorPage() {
         <div className="mb-8 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/logo.png"
-            alt="OMS Pro"
-            className="mx-auto mb-4 h-16 w-16 rounded-full object-contain shadow-lg"
+            src="/logo-icon.png"
+            alt="OMS Pro logo"
+            className="mx-auto mb-4 h-16 w-16 rounded-2xl object-contain shadow-lg"
           />
           <h1 className="text-xl font-semibold text-white">Two-Factor Verification</h1>
           <p className="mt-1 text-sm text-slate-400">Enter the 6-digit code from your authenticator app</p>

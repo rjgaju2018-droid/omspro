@@ -59,7 +59,21 @@ export function PrintArea({ id, children }: { id: string; children: React.ReactN
           #${id} { position: static; width: 100%; }
         }
       `}</style>
-      <div id={id}>{children}</div>
+      <div id={id}>
+        {children}
+        {/* 2026-09-09 — OMS Pro brand line on every printed/exported document
+            (invoices, PO bills, HR letters, reports...). Screen-invisible,
+            print-only, pinned to the bottom of the printable area. */}
+        <div
+          aria-hidden="true"
+          className="flex items-center justify-center gap-1.5 border-t border-slate-200 pt-2 text-[10px] text-slate-400 print:text-slate-400"
+          style={{ fontFamily: "Arial, sans-serif" }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-icon.png" alt="" className="h-4 w-4 object-contain" />
+          <span>Powered by OMS Pro — Smart &amp; Trusted Solutions</span>
+        </div>
+      </div>
     </>
   );
 }

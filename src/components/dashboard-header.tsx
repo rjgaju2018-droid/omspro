@@ -38,13 +38,6 @@ export function DashboardHeader({
   unreadMessageCount: number;
   notificationItems: NotificationItem[];
 }) {
-  const initials = companyName
-    .split(" ")
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
   return (
     <header className="flex h-16 items-center justify-between border-b border-[var(--oms-header-border)] bg-[var(--oms-header-bg)] px-6 shadow-sm">
       <div className="flex items-center gap-3">
@@ -52,9 +45,12 @@ export function DashboardHeader({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={logoUrl} alt={companyName} className="h-9 w-9 rounded-lg object-contain" />
         ) : (
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--oms-accent)] text-sm font-bold text-[var(--oms-accent-contrast)]">
-            {initials || "OMS"}
-          </div>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src="/logo-icon.png"
+            alt={companyName}
+            className="h-9 w-9 rounded-lg object-contain"
+          />
         )}
         <div>
           <div className="text-sm font-semibold leading-tight text-[var(--oms-text)]">{companyName}</div>

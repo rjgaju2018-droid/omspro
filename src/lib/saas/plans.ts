@@ -23,7 +23,7 @@ export const PLANS: Plan[] = [
     id: "starter",
     label: "Starter",
     priceInr: 999,
-    tagline: "Chhoti team, ek company — shuru karne ke liye.",
+    tagline: "For a small team, one company — the easiest way to start.",
     users: "Up to 3 users",
     ordersPerMonth: "500 orders / month",
     features: [
@@ -38,7 +38,7 @@ export const PLANS: Plan[] = [
     id: "growth",
     label: "Growth",
     priceInr: 2499,
-    tagline: "Growing export/marketplace businesses ke liye.",
+    tagline: "For growing export/marketplace businesses.",
     users: "Up to 15 users",
     ordersPerMonth: "5,000 orders / month",
     features: [

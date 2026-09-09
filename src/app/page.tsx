@@ -16,7 +16,7 @@ import { PLANS } from "@/lib/saas/plans";
 export const metadata: Metadata = {
   title: "OMS Pro — Order Management System for export & marketplace sellers",
   description:
-    "OMS Pro ek complete Order Management System hai — orders, dispatch, documents, finance, inventory aur HR, sab ek jagah. 14 din ka free trial, card ki zaroorat nahi.",
+    "OMS Pro is a complete Order Management System — orders, dispatch, documents, finance, inventory and HR in one place. 14-day free trial, no credit card required.",
 };
 
 const FEATURES = [
@@ -24,37 +24,37 @@ const FEATURES = [
     icon: "📝",
     title: "Order Entry & Lifecycle",
     body:
-      "Multi-currency orders, automatic PO/RG/RF numbering per company, duplicate detection, Hold/Cancel with reasons — order se dispatch tak ka pura lifecycle.",
+      "Multi-currency orders, automatic PO/RG/RF numbering per company, duplicate detection, Hold/Cancel with reasons — the full lifecycle from order to dispatch.",
   },
   {
     icon: "🚚",
     title: "Dispatch & Shipments",
     body:
-      "Multi-package, multi-AWB tracking per order, bulk tracking updates via CSV, courier webhooks (Delhivery, Shiprocket, UPS, FedEx) aur freight estimator.",
+      "Multi-package, multi-AWB tracking per order, bulk tracking updates via CSV, courier webhooks (Delhivery, Shiprocket, UPS, FedEx) and a freight estimator.",
   },
   {
     icon: "🧾",
     title: "Documents & Invoices",
     body:
-      "Credit/Debit notes, washing entries, purchase/courier/duty bills, export invoices (CSB-V/CSB-IV) origin declarations ke sath — sab ek hi jagah.",
+      "Credit/Debit notes, washing entries, purchase/courier/duty bills, export invoices (CSB-V/CSB-IV) with origin declarations — all in one place.",
   },
   {
     icon: "💳",
     title: "Finance & Approvals",
     body:
-      "Unified payable ledger, two-level bill approval workflow, party ledger, office expenses aur one-click Excel backup export.",
+      "Unified payable ledger, two-level bill approval workflow, party ledger, office expenses and one-click Excel backup export.",
   },
   {
     icon: "📦",
     title: "Stock & Inventory",
     body:
-      "Raw-material stock in/out (Chalan No. mandatory), finished-goods inventory with auto-restock on refund, reorder alerts 30-day cover ke hisab se.",
+      "Raw-material stock in/out (Chalan No. mandatory), finished-goods inventory with auto-restock on refund, reorder alerts based on 30-day cover.",
   },
   {
     icon: "📈",
     title: "Reports & CRM",
     body:
-      "Filterable reports hub — orders, profit, outstanding, SKU × country × size — sab CSV/Excel/Word/PDF me export-ready, WhatsApp share ke sath.",
+      "A filterable reports hub — orders, profit, outstanding, SKU × country × size — export-ready as CSV/Excel/Word/PDF, with WhatsApp share.",
   },
   {
     icon: "🕒",
@@ -66,49 +66,49 @@ const FEATURES = [
     icon: "🤖",
     title: "Automation & AI Companion",
     body:
-      "Trigger → condition → action rules, full audit log, aur employees ke liye optional AI companion — kaam ko halka aur tez banata hai.",
+      "Trigger → condition → action rules, a full audit log, and an optional AI companion for employees — makes work lighter and faster.",
   },
 ];
 
 const STEPS = [
   {
     n: "1",
-    title: "Free trial shuru karein",
-    body: "Apna naam, email aur company ka naam bharein — 14 din ka trial turant activate, koi card nahi.",
+    title: "Start your free trial",
+    body: "Enter your name, email and company name — the 14-day trial activates instantly, no card needed.",
   },
   {
     n: "2",
-    title: "Company setup karein",
-    body: "Apna workspace banao, stores/marketplaces add karo, roles & permissions khud decide karo.",
+    title: "Set up your company",
+    body: "Create your workspace, add stores/marketplaces, and decide your own roles & permissions.",
   },
   {
     n: "3",
-    title: "Team ko bulayein",
-    body: "Kis-kis ko kaunsa access milega — ye pura control company ke pass. Invite karo, role do, done.",
+    title: "Invite your team",
+    body: "Who gets which access — that control stays fully with the company. Invite users, assign roles, done.",
   },
   {
     n: "4",
-    title: "Orders manage karein",
-    body: "Order entry se dispatch, documents se finance tak — pura back-office ek hi dashboard me.",
+    title: "Manage your orders",
+    body: "From order entry to dispatch, documents to finance — your entire back office in one dashboard.",
   },
 ];
 
 const FAQS: { q: string; a: string }[] = [
   {
-    q: "Mera data safe hai?",
-    a: "Haan — har company ka data company-scoped hai aur Row Level Security se protect hota hai. Aapka data sirf aapki team dekh sakti hai; OMS Pro misuse nahi karta.",
+    q: "Is my data safe?",
+    a: "Yes — every company's data is company-scoped and protected by Row Level Security. Only your own team can see your data; OMS Pro never misuses it.",
   },
   {
-    q: "Trial me kya-kya milta hai?",
-    a: "14 din ke trial me sabhi modules milte hain — orders, documents, finance, inventory, HR. Card ki zaroorat nahi, trial khatam hone par bhi aapka data delete nahi hota.",
+    q: "What does the trial include?",
+    a: "The 14-day trial includes every module — orders, documents, finance, inventory, HR. No card required, and your data is not deleted when the trial ends.",
   },
   {
-    q: "Kya multiple companies chala sakta hoon?",
-    a: "Enterprise plan me ek hi login se multiple companies chala sakte hain — header me company switcher ke sath, bilkul aapke purane workflow jaisa.",
+    q: "Can I run multiple companies?",
+    a: "The Enterprise plan lets you run multiple companies from a single login — with a company switcher in the header, just like your existing workflow.",
   },
   {
-    q: "Support kaise milega?",
-    a: "Email aur WhatsApp support har plan me hai. Enterprise plan me onboarding aur data migration help bhi included hai.",
+    q: "How do I get support?",
+    a: "Email and WhatsApp support are included in every plan. The Enterprise plan also includes onboarding and data migration help.",
   },
 ];
 
@@ -119,16 +119,15 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 text-lg font-black text-white shadow-lg">
-              O
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-icon.png" alt="OMS Pro logo" className="h-9 w-9 rounded-xl shadow-lg" />
             <span className="text-lg font-bold tracking-tight text-white">
               OMS <span className="text-amber-400">Pro</span>
             </span>
           </div>
           <nav className="hidden items-center gap-7 text-sm text-slate-300 md:flex">
             <a href="#features" className="transition hover:text-white">Features</a>
-            <a href="#how" className="transition hover:text-white">Kaise kaam karta hai</a>
+            <a href="#how" className="transition hover:text-white">How it works</a>
             <a href="#pricing" className="transition hover:text-white">Pricing</a>
             <a href="#faq" className="transition hover:text-white">FAQ</a>
           </nav>
@@ -152,32 +151,32 @@ export default function LandingPage() {
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 md:grid-cols-2 md:py-24">
           <div>
             <span className="inline-block rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
-              🚀 14 din ka free trial · card ki zaroorat nahi
+              🚀 14-day free trial · no credit card required
             </span>
             <h1 className="mt-5 text-4xl font-black leading-tight tracking-tight text-white md:text-5xl">
-              Aapke order business ka{" "}
+              Your order business&apos;s{" "}
               <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
-                pura back-office
+                entire back office
               </span>
-              , ek jagah
+              , in one place
             </h1>
             <p className="mt-5 max-w-lg text-base leading-relaxed text-slate-400 md:text-lg">
-              OMS Pro ek complete Order Management System hai — order entry se dispatch tak, documents
-              se finance tak, inventory se HR tak. Export aur marketplace sellers ke liye banaya gaya,
-              real businesses me test kiya gaya.
+              OMS Pro is a complete Order Management System — from order entry to dispatch, documents
+              to finance, inventory to HR. Built for export and marketplace sellers,
+              tested in real businesses.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link
                 href="/signup"
                 className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-7 py-3.5 text-base font-bold text-white shadow-xl transition hover:scale-[1.02] hover:opacity-95"
               >
-                Free Trial Shuru Karein →
+                Start Free Trial →
               </Link>
               <a
                 href="#how"
                 className="rounded-xl border border-slate-700 px-7 py-3.5 text-base font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white"
               >
-                Kaise kaam karta hai
+                How it works
               </a>
             </div>
             <p className="mt-5 text-sm text-slate-500">
@@ -215,11 +214,10 @@ export default function LandingPage() {
       <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-black tracking-tight text-white md:text-4xl">
-            Sab kuch jo ek order business ko chahiye
+            Everything an order business needs
           </h2>
           <p className="mt-4 text-slate-400">
-            Modules scroll karte hi 3D animation ke sath move hote dikhte hain — jaise-jaise aap
-            scroll karenge, features saamne aayenge.
+            Modules animate in 3D as you scroll — the further you scroll, the more features appear.
           </p>
         </div>
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -244,9 +242,9 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-4 py-20">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-black tracking-tight text-white md:text-4xl">
-              Kaise kaam karta hai
+              How it works
             </h2>
-            <p className="mt-4 text-slate-400">Signup se pehla order tak — sirf 4 steps.</p>
+            <p className="mt-4 text-slate-400">From signup to your first order — just 4 steps.</p>
           </div>
           <ol className="mt-14 grid gap-8 md:grid-cols-4">
             {STEPS.map((s, i) => (
@@ -264,7 +262,7 @@ export default function LandingPage() {
                     href="/signup"
                     className="mt-3 inline-block text-sm font-semibold text-amber-400 hover:text-amber-300"
                   >
-                    Abhi shuru karein →
+                    Get started now →
                   </Link>
                 )}
               </li>
@@ -278,8 +276,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-black tracking-tight text-white md:text-4xl">Simple pricing</h2>
           <p className="mt-4 text-slate-400">
-            Trial bilkul free — koi credit card nahi. Badhne par plan upgrade karein, data waise ka
-            waisa.
+            The trial is completely free — no credit card. Upgrade when you grow; your data stays exactly as it is.
           </p>
         </div>
         <div className="mt-14 grid gap-6 lg:grid-cols-3">
@@ -325,7 +322,7 @@ export default function LandingPage() {
                     : "border border-slate-700 text-slate-200 hover:border-amber-500/50 hover:text-white"
                 }`}
               >
-                {plan.id === "enterprise" ? "Contact Sales" : "Free Trial Shuru Karein"}
+                {plan.id === "enterprise" ? "Contact Sales" : "Start Free Trial"}
               </Link>
             </article>
           ))}
@@ -356,17 +353,16 @@ export default function LandingPage() {
       {/* FINAL CTA */}
       <section className="mx-auto max-w-6xl px-4 py-20 text-center">
         <h2 className="text-3xl font-black tracking-tight text-white md:text-4xl">
-          Aaj hi apna OMS Pro workspace banayein
+          Create your OMS Pro workspace today
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-slate-400">
-          14 din ka free trial — sab modules unlocked, card ki zaroorat nahi. Trial ke baad bhi aapka
-          data safe rehta hai.
+          14-day free trial — all modules unlocked, no credit card required. Your data stays safe even after the trial ends.
         </p>
         <Link
           href="/signup"
           className="mt-8 inline-block rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-10 py-4 text-lg font-bold text-white shadow-2xl transition hover:scale-[1.02] hover:opacity-95"
         >
-          Free Trial Shuru Karein →
+          Start Free Trial →
         </Link>
       </section>
 
@@ -375,15 +371,14 @@ export default function LandingPage() {
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 md:grid-cols-3">
           <div>
             <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 text-lg font-black text-white">
-                O
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-lockup.png" alt="OMS Pro" className="h-9 w-auto" />
               <span className="text-lg font-bold text-white">
                 OMS <span className="text-amber-400">Pro</span>
               </span>
             </div>
             <p className="mt-3 text-sm text-slate-400">
-              Export aur marketplace sellers ke liye complete Order Management System.
+              A complete Order Management System for export and marketplace sellers.
             </p>
           </div>
           <div>

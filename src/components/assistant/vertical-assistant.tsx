@@ -42,7 +42,7 @@ export function VerticalAssistant() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label="Assistant kholein/band karein"
+        aria-label="Open/close assistant"
         className="fixed right-0 top-1/2 z-40 -translate-y-1/2 rounded-l-xl border border-l-0 border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)] px-2 py-4 text-sm shadow-xl transition hover:px-3"
         title="Assistant"
       >
@@ -59,12 +59,12 @@ export function VerticalAssistant() {
         <div className="flex items-center justify-between border-b border-[var(--oms-sidebar-border)] px-4 py-3">
           <div>
             <div className="text-sm font-bold text-[var(--oms-text)]">🧭 Assistant</div>
-            <div className="text-[11px] text-[var(--oms-sidebar-text-muted)]">Sab modules, ek panel me</div>
+            <div className="text-[11px] text-[var(--oms-sidebar-text-muted)]">Every module, one panel</div>
           </div>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            aria-label="Assistant band karein"
+            aria-label="Close assistant"
             className="rounded px-2 py-1 text-xs text-[var(--oms-sidebar-text-muted)] hover:text-[var(--oms-text)]"
           >
             ✕
@@ -76,7 +76,7 @@ export function VerticalAssistant() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Module search karein…"
+            placeholder="Search modules…"
             className="w-full rounded-lg border border-[var(--oms-sidebar-border)] bg-transparent px-3 py-2 text-xs text-[var(--oms-text)] placeholder-[var(--oms-sidebar-text-muted)] outline-none focus:border-[var(--oms-accent)]"
           />
         </div>
@@ -103,7 +103,7 @@ export function VerticalAssistant() {
           })}
           {items.length === 0 && (
             <p className="px-3 py-6 text-center text-xs text-[var(--oms-sidebar-text-muted)]">
-              Koi module nahi mila — dusra keyword try karein.
+              No modules found — try a different keyword.
             </p>
           )}
         </nav>
@@ -113,7 +113,7 @@ export function VerticalAssistant() {
             href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("OMS Pro support")}`}
             className="block rounded-lg border border-[var(--oms-sidebar-border)] px-3 py-2 text-center text-xs font-semibold text-[var(--oms-text)] transition hover:border-[var(--oms-accent)] hover:text-[var(--oms-accent)]"
           >
-            💬 Support se baat karein
+            💬 Contact support
           </a>
         </div>
       </aside>

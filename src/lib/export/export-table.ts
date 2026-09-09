@@ -30,6 +30,13 @@ export type ExportColumn<T> = {
   value: (row: T) => string | number | null | undefined;
 };
 
+// 2026-09-09 — OMS Pro SaaS branding: every file a subscriber exports (CSV,
+// TSV, XLSX, Word) carries a small "Powered by OMS Pro" trailer line. The
+// company's own data/name stays exactly as it is — this is a single extra
+// line at the bottom, required by the product owner (their brand ships with
+// every customer export; subscriber logos brand the UI, not the files).
+const EXPORT_BRAND_LINE = "Powered by OMS Pro — Smart & Trusted Solutions";
+
 function cell(v: string | number | null | undefined): string {
   if (v === null || v === undefined) return "";
   return String(v);
@@ -48,9 +55,11 @@ function escapeDelimited(v: string, delimiter: string): string {
   return v;
 }
 
-export function toDelimitedString<T>(columns: ExportColumn<T>[], rows: T[], delimiter: string): string {
+export function toDelimitedString<T>(columns: ExportColumn<T>[], rows: T[], delimiter: string, opts?: { brand?: boolean }): string {
   const aoa = rowsToAoA(columns, rows);
-  return aoa.map((line) => line.map((v) => escapeDelimited(v, delimiter)).join(delimiter)).join("\r\n");
+  const lines = aoa.map((line) => line.map((v) => escapeDelimited(v, delimiter)).join(delimiter));
+  if (opts?.brand !== false) lines.push(escapeDelimited(EXPORT_BRAND_LINE, delimiter));
+  return lines.join("\r\n");
 }
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -105,6 +114,11 @@ export async function downloadXLSX<T>(
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   // Reasonable column widths so the sheet isn't unreadable on open.
   ws["!cols"] = columns.map((c) => ({ wch: Math.max(c.label.length + 2, 12) }));
+  // Brand trailer row (styled bold-ish via a plain cell; XLSX basic types
+  // don't support rich styling without a heavier writer).
+  const brandRow = aoa.length + 1;
+  ws[XLSX.utils.encode_cell({ r: brandRow, c: 0 })] = { t: "s", v: EXPORT_BRAND_LINE };
+  ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: brandRow, c: Math.max(columns.length - 1, 0) } });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31)); // Excel sheet-name length limit
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
@@ -125,7 +139,8 @@ function buildHtmlTable<T>(title: string, columns: ExportColumn<T>[], rows: T[])
     .join("");
   return `<html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head>` +
     `<body><h2>${escapeHtml(title)}</h2><table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;">` +
-    `<thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table></body></html>`;
+    `<thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table>` +
+    `<p style="font-family:Arial,sans-serif;font-size:11px;color:#888;margin-top:14px;">${EXPORT_BRAND_LINE}</p></body></html>`;
 }
 
 // A ".doc" that is really HTML + application/msword MIME — Word/LibreOffice

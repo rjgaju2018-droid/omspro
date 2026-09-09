@@ -60,16 +60,16 @@ export async function signup(_prevState: SignupState, formData: FormData): Promi
   const companyName = str(formData, "company_name");
 
   if (!yourName || !email || !password || !companyName) {
-    return { error: "Sabhi fields required hain — apna naam, email, password aur company ka naam.", success: null };
+    return { error: "All fields are required — your name, email, password and company name.", success: null };
   }
   if (!/^\S+@\S+\.\S+$/.test(email)) {
-    return { error: "Email ka format sahi nahi hai.", success: null };
+    return { error: "The email format is not valid.", success: null };
   }
   if (password.length < 8) {
-    return { error: "Password kam se kam 8 characters ka hona chahiye.", success: null };
+    return { error: "Password must be at least 8 characters long.", success: null };
   }
   if (companyName.length < 2) {
-    return { error: "Company ka naam bahut chhota hai.", success: null };
+    return { error: "The company name is too short.", success: null };
   }
 
   const service = createServiceRoleClient();
@@ -84,9 +84,9 @@ export async function signup(_prevState: SignupState, formData: FormData): Promi
   if (authError || !authUser?.user) {
     const msg = authError?.message ?? "";
     if (msg.toLowerCase().includes("already been registered") || msg.toLowerCase().includes("already exists")) {
-      return { error: "Ye email pehle se use me hai — login karein ya dusra email try karein.", success: null };
+      return { error: "This email is already in use — log in instead, or try a different email.", success: null };
     }
-    return { error: `Account nahi ban paya: ${msg || "unknown error"}`, success: null };
+    return { error: `Could not create the account: ${msg || "unknown error"}`, success: null };
   }
 
   try {
@@ -142,7 +142,7 @@ export async function signup(_prevState: SignupState, formData: FormData): Promi
     console.error("signup: rolled back, error:", err);
     return {
       error:
-        "Company setup fail ho gaya — kripya dobara try karein. (Agar baar-baar fail ho raha hai to admin ko batayein: db/2026-09-09-omspro-saas-signup.sql run hona chahiye.)",
+        "Company setup failed — please try again. (If it keeps failing, tell your admin: db/2026-09-09-omspro-saas-signup.sql still needs to be run.)",
       success: null,
     };
   }
