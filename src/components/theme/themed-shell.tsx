@@ -16,7 +16,23 @@
 // layout classes, now theme-token-driven instead of a hardcoded
 // bg-slate-100 (which is exactly what the Navy/Gold theme's --oms-canvas
 // still resolves to, so the default look is unchanged).
-import type { CSSProperties, ReactNode } from "react";
+//
+// 2026-09-09 — "CHAT KA COLOUR DESBORD SE MATCH HO JATA HAI FONT BHI NHI
+// DIKHTA... YE FONT VALA ISSUE HAR JAGH LAGTA HAI KAI BAAR": traced to
+// this component being the ONLY place `--oms-*` gets defined — on this
+// one <div>, not <html>. dashboard/layout.tsx renders the AI Companion
+// dock/chat/event-popup, the message toast, and the Messenger popup as
+// SIBLINGS of this div (fixed-position overlays, not children of it), so
+// none of them were ever inside this div's subtree and none of them
+// could ever resolve a single `--oms-*` variable — on ANY theme, not
+// just Clay, which is why the same washed-out/invisible text has shown
+// up in more than one place. Fixed by ALSO mirroring data-theme + the
+// custom-accent override onto <html> below, so every fixed/portaled
+// element site-wide can see them too, while /login stays completely
+// unaffected (this component only ever mounts inside the authenticated
+// dashboard layout) and cleans up on unmount so a client-side Logout
+// can't leave a stale theme on <html> for whatever renders next.
+import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { useTheme } from "./theme-provider";
 
 /**
@@ -48,6 +64,23 @@ export function ThemedShell({ children }: { children: ReactNode }) {
         "--oms-accent-contrast": contrastColorFor(customAccent),
       } as CSSProperties)
     : undefined;
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-theme", themeId);
+    if (customAccent) {
+      root.style.setProperty("--oms-accent", customAccent);
+      root.style.setProperty("--oms-accent-contrast", contrastColorFor(customAccent));
+    } else {
+      root.style.removeProperty("--oms-accent");
+      root.style.removeProperty("--oms-accent-contrast");
+    }
+    return () => {
+      root.removeAttribute("data-theme");
+      root.style.removeProperty("--oms-accent");
+      root.style.removeProperty("--oms-accent-contrast");
+    };
+  }, [themeId, customAccent]);
 
   return (
     <div data-theme={themeId} style={style} className="flex h-screen overflow-hidden bg-[var(--oms-canvas)] text-[var(--oms-text)]">
