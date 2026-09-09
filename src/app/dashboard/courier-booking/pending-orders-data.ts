@@ -30,6 +30,15 @@ export type PendingOrderRow = {
   orderValueInr: number | null;
   status: string;
   dueBucket: "overdue" | "due_soon" | "later" | "unknown";
+  // 2026-09-09 — pre-booking weight/dims estimate (orders.weight_kg/
+  // length_cm/width_cm/height_cm — see db/2026-09-09-order-weight-dims-
+  // bulk.sql). Surfaced here so the new Bulk Update Weight/Dims modal
+  // (pending-orders.tsx) can prefill each selected row with whatever's
+  // already on file instead of always starting blank.
+  weightKg: number | null;
+  lengthCm: number | null;
+  widthCm: number | null;
+  heightCm: number | null;
 };
 
 export type PendingOrdersFilters = {
@@ -62,7 +71,7 @@ export async function getPendingOrders(
   let query = supabase
     .from("orders")
     .select(
-      "id, ref_no, ref_no_base, order_date, estimated_dispatch_date, marketplace_order_no, buyer_name_address, contact_no, email_id, destination_country, sku_label, qty, order_value_inr, status"
+      "id, ref_no, ref_no_base, order_date, estimated_dispatch_date, marketplace_order_no, buyer_name_address, contact_no, email_id, destination_country, sku_label, qty, order_value_inr, status, weight_kg, length_cm, width_cm, height_cm"
     )
     .eq("company_id", companyId)
     .not("status", "in", "(Cancelled,Returned,Hold)")
@@ -112,6 +121,10 @@ export async function getPendingOrders(
       orderValueInr: o.order_value_inr,
       status: o.status,
       dueBucket,
+      weightKg: o.weight_kg != null ? Number(o.weight_kg) : null,
+      lengthCm: o.length_cm != null ? Number(o.length_cm) : null,
+      widthCm: o.width_cm != null ? Number(o.width_cm) : null,
+      heightCm: o.height_cm != null ? Number(o.height_cm) : null,
     });
   }
   return rows;

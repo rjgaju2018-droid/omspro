@@ -142,10 +142,14 @@ export type CourierBookingLookupOrder = {
   // form can pass them straight through as the hidden "combined_order_ids"
   // field every create*Booking action reads (applyCombinedSiblingShipments
   // above). orderValueInr above is already the BATCH SUM in that case —
-  // see the combined-totals block below. Package weight/dims stay
-  // whatever the employee physically weighs/measures either way (this app
-  // has never had a reliable pre-dispatch weight source — dispatch_invoices
-  // only exists post-dispatch — so combine doesn't change that).
+  // see the combined-totals block below. Package weight/dims still default
+  // from the PRIMARY order only (lengthCm/widthCm/heightCm/shippingWeightKg
+  // below — orders.weight_kg etc, or dispatch_invoices when a prior booking
+  // set it, see 2026-09-09 comment on those fields) — combining siblings
+  // into one physical package doesn't sum their individual pre-booking
+  // estimates, since the whole point of Combine & Book is one AWB covering
+  // a differently-shaped combined parcel; the employee still confirms/edits
+  // the actual combined-package weight/measurements before submitting.
   combinedOrderIds: string[];
   combinedRefNos: string[];
 };
@@ -167,7 +171,7 @@ export async function lookupOrderForCourierBooking(
   const { data: orders, error: orderError } = await supabase
     .from("orders")
     .select(
-      "id, ref_no, buyer_name_address, contact_no, email_id, sku_label, qty, order_value_inr, buyer_country, buyer_address1, buyer_address2, buyer_address3, buyer_city, buyer_state, buyer_postal_code, destination_country"
+      "id, ref_no, buyer_name_address, contact_no, email_id, sku_label, qty, order_value_inr, buyer_country, buyer_address1, buyer_address2, buyer_address3, buyer_city, buyer_state, buyer_postal_code, destination_country, weight_kg, length_cm, width_cm, height_cm"
     )
     .eq("ref_no", refNo)
     .in("company_id", employee.companyIds);
@@ -231,10 +235,20 @@ export async function lookupOrderForCourierBooking(
       hsnNo: dispatch?.hsn_no ?? null,
       skuLabel: order.sku_label,
       qty: order.qty,
-      lengthCm: dispatch?.length_cm ?? null,
-      widthCm: dispatch?.width_cm ?? null,
-      heightCm: dispatch?.height_cm ?? null,
-      shippingWeightKg: dispatch?.shipping_weight_kg ?? null,
+      // 2026-09-09: dispatch_invoices (post-dispatch, resynced from a real
+      // order_packages row once a shipment/AWB exists) still wins when
+      // present — an order being re-booked already has real data. For an
+      // order that's never been booked with anyone, dispatch_invoices has
+      // no row at all, so this now falls back to orders.weight_kg/length_cm/
+      // width_cm/height_cm — the new pre-booking estimate, filled in
+      // individually or via Pending Orders' bulk-select editor
+      // (bulkUpdateOrderWeightDims, pending-orders-actions.ts) — instead of
+      // always defaulting blank. See db/2026-09-09-order-weight-dims-
+      // bulk.sql for why this couldn't just reuse dispatch_invoices itself.
+      lengthCm: dispatch?.length_cm ?? order.length_cm ?? null,
+      widthCm: dispatch?.width_cm ?? order.width_cm ?? null,
+      heightCm: dispatch?.height_cm ?? order.height_cm ?? null,
+      shippingWeightKg: dispatch?.shipping_weight_kg ?? order.weight_kg ?? null,
       orderValueInr: siblingRows.length > 0 ? combinedValue : order.order_value_inr,
       alreadyBooked,
       combinedOrderIds: siblingRows.map((s) => s.id),

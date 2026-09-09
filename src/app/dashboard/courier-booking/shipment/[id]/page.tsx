@@ -6,6 +6,8 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { getShipmentDetail, type TimelineStage } from "../shipment-detail-data";
 import { CancelShipmentModal } from "../cancel-shipment-modal";
 import { AllDocumentsButton } from "../all-documents-button";
+import { getNdrAttemptsForShipment } from "../ndr-data";
+import { NdrPanel } from "../ndr-panel";
 
 // Rich Shipment Detail page (EGS-integration round, 2026-09-04) — mirrors
 // EGS's own Shipment History Detail page (/shipment-history-detail/{id}).
@@ -20,6 +22,7 @@ export default async function ShipmentDetailPage({ params }: { params: Promise<{
 
   const detail = await getShipmentDetail(supabase, employee.companyIds, id);
   if (!detail) notFound();
+  const ndrAttempts = await getNdrAttemptsForShipment(supabase, detail.id);
 
   return (
     <div className="space-y-6">
@@ -83,6 +86,8 @@ export default async function ShipmentDetailPage({ params }: { params: Promise<{
       )}
 
       <Timeline stages={detail.timeline} />
+
+      <NdrPanel courierShipmentId={detail.id} attempts={ndrAttempts} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Section title="Delivery Details">

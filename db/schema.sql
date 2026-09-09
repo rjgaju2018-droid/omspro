@@ -3950,6 +3950,46 @@ CREATE INDEX idx_courier_shipments_order    ON courier_shipments(order_id);
 CREATE INDEX idx_courier_shipments_awb      ON courier_shipments(awb_no);
 CREATE INDEX idx_courier_shipments_courier  ON courier_shipments(courier);
 
+-- 2026-09-09 — pre-booking weight/dims on orders (bulk-editable from the
+-- Pending Orders tab before a courier shipment ever exists) — see
+-- db/2026-09-09-order-weight-dims-bulk.sql's header for why this is a 4th,
+-- deliberately distinct location from dispatch_invoices/order_packages/
+-- sales_invoices' own weight_kg/length_cm/width_cm/height_cm columns.
+-- lookupOrderForCourierBooking (courier-booking/actions.ts) falls back to
+-- these only when dispatch_invoices has no row yet for the order.
+ALTER TABLE orders ADD COLUMN weight_kg numeric(10,3);
+ALTER TABLE orders ADD COLUMN length_cm numeric(10,2);
+ALTER TABLE orders ADD COLUMN width_cm  numeric(10,2);
+ALTER TABLE orders ADD COLUMN height_cm numeric(10,2);
+
+-- 2026-09-09: NDR (Non-Delivery Report / failed delivery attempt) manual
+-- logging against a courier_shipments row — see
+-- db/2026-09-09-ndr-tracking.sql for the full context comment. Staff log a
+-- failed delivery attempt reported by the courier (phone/email, outside
+-- the app); a shipment can have multiple attempts before final resolution.
+-- Works for both real-API and manual-entry shipments alike since both are
+-- courier_shipments rows. Gated on the existing courier_booking_shipment
+-- capability, no new capability added.
+CREATE TABLE courier_shipment_ndr_attempts (
+  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  courier_shipment_id     uuid NOT NULL REFERENCES courier_shipments(id),
+  attempt_no              integer NOT NULL,   -- 1-based per shipment
+  reason                  text NOT NULL CHECK (reason IN ('Address Issue', 'Customer Unavailable', 'Refused', 'Weather/Force Majeure', 'Other')),
+  note                    text,
+  attempted_at            timestamptz NOT NULL DEFAULT now(),   -- when the failed attempt itself happened, per the courier's report
+  logged_by_employee_id   uuid REFERENCES employees(id),
+  logged_by_name          text NOT NULL,
+  created_at              timestamptz NOT NULL DEFAULT now(),   -- when this row was saved
+  resolved_at             timestamptz,
+  resolved_by_employee_id uuid REFERENCES employees(id),
+  resolved_by_name        text,
+  resolved_note           text,
+  UNIQUE (courier_shipment_id, attempt_no)
+);
+CREATE INDEX idx_ndr_attempts_shipment        ON courier_shipment_ndr_attempts(courier_shipment_id);
+CREATE INDEX idx_ndr_attempts_unresolved      ON courier_shipment_ndr_attempts(reason) WHERE resolved_at IS NULL;
+CREATE INDEX idx_ndr_attempts_unresolved_date ON courier_shipment_ndr_attempts(attempted_at) WHERE resolved_at IS NULL;
+
 -- 2026-09-03: per-company, per-courier API credentials entered via the
 -- Account Setup tab on /dashboard/courier-booking, instead of Vercel env
 -- vars — see db/2026-09-03-courier-account-setup.sql for the full context

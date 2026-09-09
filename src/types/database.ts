@@ -4430,6 +4430,10 @@ export type Database = {
           exchange_rate_source: string | null;
           created_at: string;
           invoice_id: string | null;
+          weight_kg: number | null;
+          length_cm: number | null;
+          width_cm: number | null;
+          height_cm: number | null;
         };
         Insert: {
           id?: string;
@@ -4489,6 +4493,10 @@ export type Database = {
           exchange_rate_source?: string | null;
           created_at?: string;
           invoice_id?: string | null;
+          weight_kg?: number | null;
+          length_cm?: number | null;
+          width_cm?: number | null;
+          height_cm?: number | null;
         };
         Update: {
           id?: string;
@@ -4548,6 +4556,10 @@ export type Database = {
           exchange_rate_source?: string | null;
           created_at?: string;
           invoice_id?: string | null;
+          weight_kg?: number | null;
+          length_cm?: number | null;
+          width_cm?: number | null;
+          height_cm?: number | null;
         };
         Relationships: [
           {
@@ -5749,6 +5761,76 @@ export type Database = {
           {
             foreignKeyName: "courier_shipments_created_by_fkey";
             columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      courier_shipment_ndr_attempts: {
+        Row: {
+          id: string;
+          courier_shipment_id: string;
+          attempt_no: number;
+          reason: "Address Issue" | "Customer Unavailable" | "Refused" | "Weather/Force Majeure" | "Other";
+          note: string | null;
+          attempted_at: string;
+          logged_by_employee_id: string | null;
+          logged_by_name: string;
+          created_at: string;
+          resolved_at: string | null;
+          resolved_by_employee_id: string | null;
+          resolved_by_name: string | null;
+          resolved_note: string | null;
+        };
+        Insert: {
+          id?: string;
+          courier_shipment_id: string;
+          attempt_no: number;
+          reason: "Address Issue" | "Customer Unavailable" | "Refused" | "Weather/Force Majeure" | "Other";
+          note?: string | null;
+          attempted_at?: string;
+          logged_by_employee_id?: string | null;
+          logged_by_name: string;
+          created_at?: string;
+          resolved_at?: string | null;
+          resolved_by_employee_id?: string | null;
+          resolved_by_name?: string | null;
+          resolved_note?: string | null;
+        };
+        Update: {
+          id?: string;
+          courier_shipment_id?: string;
+          attempt_no?: number;
+          reason?: "Address Issue" | "Customer Unavailable" | "Refused" | "Weather/Force Majeure" | "Other";
+          note?: string | null;
+          attempted_at?: string;
+          logged_by_employee_id?: string | null;
+          logged_by_name?: string;
+          created_at?: string;
+          resolved_at?: string | null;
+          resolved_by_employee_id?: string | null;
+          resolved_by_name?: string | null;
+          resolved_note?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "courier_shipment_ndr_attempts_courier_shipment_id_fkey";
+            columns: ["courier_shipment_id"];
+            isOneToOne: false;
+            referencedRelation: "courier_shipments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "courier_shipment_ndr_attempts_logged_by_employee_id_fkey";
+            columns: ["logged_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "courier_shipment_ndr_attempts_resolved_by_employee_id_fkey";
+            columns: ["resolved_by_employee_id"];
             isOneToOne: false;
             referencedRelation: "employees";
             referencedColumns: ["id"];

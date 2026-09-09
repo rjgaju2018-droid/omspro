@@ -13,6 +13,10 @@ import { getPickupCandidateAwbs, listPickupRequests, type PickupCandidateAwb } f
 import { PickupRequest } from "./pickup-request";
 import { getDailyShipmentReport, type DailyReportFilters } from "./daily-report-data";
 import { DailyShipmentReport } from "./daily-shipment-report";
+import { getUnresolvedNdrSummary } from "./ndr-summary-data";
+import { NdrSummaryPanel } from "./ndr-summary-panel";
+import { getCourierPerformanceReport, type CourierPerformanceFilters } from "./courier-performance-data";
+import { CourierPerformanceReport } from "./courier-performance-report";
 
 // Courier Ops Dashboard — Account Setup / Pending Orders / Book Shipment /
 // Pickup Request / Track Shipments / Daily Report, all in one page.
@@ -67,8 +71,14 @@ export default async function CourierBookingPage({
     destinationCountry: str("report_destination_country"),
   };
   const bookPrefill: BookPrefill = str("book_ref_no") ? { refNo: str("book_ref_no"), combinedOrderIds: str("book_combined_ids") } : null;
+  const performanceFilters: CourierPerformanceFilters = {
+    dateFrom: str("perf_date_from"),
+    dateTo: str("perf_date_to"),
+    courier: str("perf_courier") as CourierPerformanceFilters["courier"],
+    destinationCountry: str("perf_destination_country"),
+  };
 
-  const validTabs: CourierBookingTab[] = ["setup", "pending", "book", "pickup", "track", "report"];
+  const validTabs: CourierBookingTab[] = ["setup", "pending", "book", "pickup", "track", "ndr", "report", "performance"];
   const initialTab: CourierBookingTab = validTabs.includes(sp.tab as CourierBookingTab) ? (sp.tab as CourierBookingTab) : "book";
 
   const [
@@ -79,6 +89,8 @@ export default async function CourierBookingPage({
     pendingOrderRows,
     pickupRequests,
     dailyReportRows,
+    ndrSummary,
+    performanceReport,
     ...prefillByCourier
   ] = await Promise.all([
     supabase.from("courier_shipper_profiles").select("*").eq("company_id", employee.currentCompanyId).maybeSingle(),
@@ -88,6 +100,8 @@ export default async function CourierBookingPage({
     getPendingOrders(serviceSupabase, employee.companyIds, employee.currentCompanyId, pendingFilters),
     listPickupRequests(serviceSupabase, employee.currentCompanyId),
     getDailyShipmentReport(serviceSupabase, employee.currentCompanyId, reportFilters, false),
+    getUnresolvedNdrSummary(serviceSupabase, employee.companyIds),
+    getCourierPerformanceReport(serviceSupabase, employee.currentCompanyId, performanceFilters),
     ...COURIERS.map((c) => getNonSecretCredentialValues(serviceSupabase, employee.currentCompanyId, c.key)),
   ]);
 
@@ -141,7 +155,19 @@ export default async function CourierBookingPage({
             <ShipmentsTracking shipments={trackedShipments} filters={trackingFilters} />
           </div>
         }
+        ndr={<NdrSummaryPanel summary={ndrSummary} />}
         report={<DailyShipmentReport rows={dailyReportRows} filters={reportFilters} rowCapHit={dailyReportRows.length >= 500} />}
+        performance={
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <h2 className="mb-3 text-sm font-semibold text-slate-800">🌍 Courier Performance by Country</h2>
+            <CourierPerformanceReport
+              rows={performanceReport.rows}
+              filters={performanceFilters}
+              shipmentsMatched={performanceReport.shipmentsMatched}
+              rowCapHit={performanceReport.rowCapHit}
+            />
+          </div>
+        }
       />
     </div>
   );
