@@ -1,28 +1,26 @@
 PROPRIETARY SOFTWARE LICENSE
 
-Copyright (c) 2026 Nyko Mart, Rugara, and CASA ARRA. All rights reserved.
+Copyright (c) 2026 OMS Pro. All rights reserved.
 
-  Nyko Mart    — D-489, Sector-29, Pratap Nagar, Jaipur-302033, Rajasthan, India
-                 GSTIN 08CVAPS0200H1Z0 · IEC CVAPS0200H
-  Rugara       — D-489, Sector-29, Pratap Nagar, Jaipur-302033, Rajasthan, India
-                 GSTIN 08BDHPL8126K1Z6 · IEC BDHPL8126K
-  CASA ARRA    — Plot No. 80, Ashadeep Green Vatika, Sanganer, Bagru,
-                 Jaipur, RJ-303905, India
-                 GSTIN 08AUXPR4630C1ZA
+  OMS Pro — Owner & Developer: Mr. Gajanand Bhankariwal
+              Jaipur, Rajasthan, India
+              bhankariwal@gmail.com · +91 99830 00552
 
 This software, including its source code, database schema, and all associated
-documentation (collectively, the "Software"), was developed exclusively for
-the internal business operations of Nyko Mart, Rugara, and CASA ARRA
-(collectively, the "Companies") — order management, dispatch and shipment
-tracking, accounting and vendor/bill management, inventory, HR and
-attendance, reporting, and related back-office functions.
+documentation (collectively, the "Software"), is proprietary product
+software for order management, dispatch and shipment tracking, accounting
+and vendor/bill management, inventory, HR and attendance, reporting, and
+related back-office functions, offered to subscriber companies as a
+software-as-a-service product ("OMS Pro").
 
 1. GRANT OF USE
 
-   The Companies, and employees or contractors authorized by the Companies,
-   may install, run, and use the Software solely for the internal business
-   purposes of the Companies. No other right, license, or permission is
-   granted under this license.
+   Subscriber companies, and employees or contractors authorized by them,
+   may access and use the Software solely through the official OMS Pro
+   service (or a deployment authorized in writing by the owner) for the
+   subscriber's own internal business purposes, for the duration of their
+   active subscription. No other right, license, or permission is granted
+   under this license.
 
 2. RESTRICTIONS
 
@@ -30,21 +28,23 @@ attendance, reporting, and related back-office functions.
    modify, merge, publish, distribute, sublicense, sell, rent, lease, or
    otherwise make the Software or any portion of it available to any third
    party, in source or compiled form, without the prior written consent of
-   an authorized representative of the Companies.
+   the owner.
 
    This restriction applies regardless of how a copy of this repository or
    the Software was obtained, including via any code-hosting platform on
-   which it may be stored for the Companies' own development and deployment
+   which it may be stored for the owner's own development and deployment
    purposes.
 
 3. CONFIDENTIALITY
 
-   The Software embeds and processes confidential and proprietary business
-   information belonging to the Companies, including but not limited to
-   order, vendor, financial, and employee data, business logic, and pricing
-   and vendor terms. Access to the Software's source code does not grant any
-   right to access, retain, or disclose the Companies' underlying business
-   data, which remains confidential regardless of this license.
+   The Software embeds confidential and proprietary information belonging
+   to the owner, including business logic, pricing, and integrations, and
+   it processes each subscriber company's confidential business data. Access
+   to the Software's source code does not grant any right to access,
+   retain, or disclose the owner's product internals or any subscriber
+   company's business data, all of which remain confidential regardless of
+   this license. Subscriber data is never shared between subscriber
+   companies and is never used by the owner beyond operating the service.
 
 4. NO WARRANTY
 
@@ -54,7 +54,7 @@ attendance, reporting, and related back-office functions.
 
 5. LIMITATION OF LIABILITY
 
-   IN NO EVENT SHALL THE COMPANIES OR ANY CONTRIBUTOR TO THE SOFTWARE BE
+   IN NO EVENT SHALL THE OWNER OR ANY CONTRIBUTOR TO THE SOFTWARE BE
    LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM, OUT OF,
    OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
    SOFTWARE.
@@ -67,9 +67,8 @@ attendance, reporting, and related back-office functions.
 
 ---
 
-This license was drafted as a working default for internal use and has not
-been reviewed by a lawyer. If this repository or the Software will ever be
-shared outside the Companies, licensed to a third party, or used as the
-basis of a dispute, have this license reviewed by a qualified attorney
-before relying on it, and confirm the correct legal entity name(s) to use
-as the named copyright holder(s).
+This license was drafted as a working default and has not been reviewed by a
+lawyer. If the Software will ever be licensed to a third party beyond the
+standard subscription terms, or used as the basis of a dispute, have this
+license reviewed by a qualified attorney before relying on it, and confirm
+the correct legal entity name to use as the named copyright holder.
