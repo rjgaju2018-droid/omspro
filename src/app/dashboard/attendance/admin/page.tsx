@@ -2,7 +2,7 @@ import { requireCapability } from "@/lib/auth/require-capability";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { todayIST, addDaysToDateStr, daysInMonth } from "@/lib/attendance/ist-date";
 import { categorizeMonth, summarizeCategories } from "@/lib/attendance/payroll";
-import { formatDuration, liveElapsedSeconds } from "@/lib/attendance/timer";
+import { formatDuration, liveElapsedSeconds, liveElapsedSecondsForToday } from "@/lib/attendance/timer";
 import { EXPECTED_WORK_MINUTES, OFFICE_START_LABEL, OFFICE_END_LABEL, formatHM, compareToExpected, type WorkHoursVerdict } from "@/lib/attendance/work-hours";
 import {
   attendanceScore,
@@ -413,6 +413,11 @@ export default async function AttendanceAdminPage({
   const hasTaskAdmin = employee.capabilities.includes("task_admin");
   let tasks: { id: string; website: string | null; category: string | null; priority: string; deadline: string | null; status: string; description: string; created_at: string; timer_started_at: string | null; time_spent_seconds: number; assigned_by_employee_id: string; assigned_to_employee_id: string }[] = [];
   let liveNow: { id: string; description: string; timer_started_at: string | null; time_spent_seconds: number; assigned_to_employee_id: string; company_id: string }[] = [];
+  // 2026-09-09 — today's (IST) committed task_daily_time_log seconds per
+  // task id, keyed the same way as attendance/page.tsx's own
+  // todaySecondsByTaskId — covers both the "All Tasks" table (selected
+  // company) and "Live Now" (all companies this login can see).
+  const todaySecondsByTaskId = new Map<string, number>();
 
   if (hasTaskAdmin) {
     // 2026-08-11 (round 5): same root cause as attendance/page.tsx — reads
@@ -453,6 +458,20 @@ export default async function AttendanceAdminPage({
     if (missingIds.length) {
       const { data: extraEmployees } = await supabase.from("employees").select("id, name").in("id", missingIds);
       for (const e of extraEmployees ?? []) employeeName.set(e.id, e.name);
+    }
+
+    // 2026-09-09 — same "how much today, separate from lifetime total"
+    // breakdown as the employee's own "My Tasks" view, now for admins too.
+    // Genuinely dependent on tasks/liveNow's ids resolving first (same
+    // "Promise.all only for independent queries" convention as elsewhere).
+    const allTaskIds = Array.from(new Set([...tasks.map((t) => t.id), ...liveNow.map((l) => l.id)]));
+    if (allTaskIds.length) {
+      const { data: todayRows } = await taskSupabase
+        .from("task_daily_time_log")
+        .select("task_id, seconds_spent")
+        .in("task_id", allTaskIds)
+        .eq("log_date", todayIST());
+      for (const r of todayRows ?? []) todaySecondsByTaskId.set(r.task_id, r.seconds_spent);
     }
   }
 
@@ -905,8 +924,11 @@ export default async function AttendanceAdminPage({
                 <div key={t.id} className="flex flex-wrap items-center gap-2 rounded border border-amber-100 bg-white px-2.5 py-1.5 text-xs">
                   <span className="font-medium text-slate-800">{employeeName.get(t.assigned_to_employee_id) ?? "—"}</span>
                   <span className="flex-1 truncate text-slate-600">{t.description}</span>
-                  <span className="font-semibold text-amber-800">
-                    {formatDuration(liveElapsedSeconds({ timeSpentSeconds: t.time_spent_seconds, timerStartedAt: t.timer_started_at }, taskNowMs))}
+                  <span className="rounded-md bg-sky-50 px-1.5 py-0.5 font-semibold text-sky-700">
+                    Today {formatDuration(liveElapsedSecondsForToday({ timerStartedAt: t.timer_started_at }, todaySecondsByTaskId.get(t.id) ?? 0, taskNowMs))}
+                  </span>
+                  <span className="font-semibold text-amber-800" title="Total time spent on this task across all days">
+                    Total {formatDuration(liveElapsedSeconds({ timeSpentSeconds: t.time_spent_seconds, timerStartedAt: t.timer_started_at }, taskNowMs))}
                   </span>
                 </div>
               ))}
@@ -925,7 +947,8 @@ export default async function AttendanceAdminPage({
                     <th className="px-2">Priority</th>
                     <th className="px-2">Status</th>
                     <th className="px-2">Deadline</th>
-                    <th className="px-2">Time Spent</th>
+                    <th className="px-2">Today</th>
+                    <th className="px-2">Total Time</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -937,6 +960,9 @@ export default async function AttendanceAdminPage({
                       <td className="px-2">{t.priority}</td>
                       <td className="px-2">{t.status}</td>
                       <td className="px-2 text-slate-500">{t.deadline ?? "—"}</td>
+                      <td className="px-2 text-sky-700">
+                        {formatDuration(liveElapsedSecondsForToday({ timerStartedAt: t.timer_started_at }, todaySecondsByTaskId.get(t.id) ?? 0, taskNowMs))}
+                      </td>
                       <td className="px-2 text-amber-700">
                         {formatDuration(liveElapsedSeconds({ timeSpentSeconds: t.time_spent_seconds, timerStartedAt: t.timer_started_at }, taskNowMs))}
                         {t.timer_started_at && <span className="ml-1 text-green-600">●</span>}
@@ -944,7 +970,7 @@ export default async function AttendanceAdminPage({
                     </tr>
                   ))}
                   {tasks.length === 0 && (
-                    <tr><td colSpan={7} className="py-3 text-center text-slate-400">No tasks for this company yet.</td></tr>
+                    <tr><td colSpan={8} className="py-3 text-center text-slate-400">No tasks for this company yet.</td></tr>
                   )}
                 </tbody>
               </table>
