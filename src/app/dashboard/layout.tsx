@@ -232,10 +232,19 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               // regeneration (same public URL, upsert: true) is picked up
               // immediately instead of every browser's cached copy of the
               // old image sticking around.
+              //
+              // 2026-09-09 — "STATIC FALLBACK IMAGE ADD KARO": until an
+              // Admin/MD generates a real photo via /dashboard/admin/
+              // companion-access, every employee used to see the hand-drawn
+              // SVG mascot. Now they see this bundled reference-art image
+              // instead — same character the claymock UI mockup's own
+              // companion widget uses — with the DB-generated Gemini photo
+              // still taking priority the moment one exists (unchanged
+              // precedence, this only replaces the innermost `null`).
               companionImageUrl={
                 companionCharacterImage?.image_url
                   ? `${companionCharacterImage.image_url}?v=${encodeURIComponent(companionCharacterImage.generated_at)}`
-                  : null
+                  : "/companion/character-fallback.png"
               }
             />
           ) : null}

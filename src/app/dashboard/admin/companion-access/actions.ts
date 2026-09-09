@@ -62,11 +62,23 @@ const IMAGE_MODEL = "gemini-2.5-flash-image";
 const CHARACTER_IMAGE_BUCKET = "companion-images";
 const CHARACTER_IMAGE_PATH = "character.png";
 
+// 2026-09-09 — "AI COMPANION CHARACTER INTEGRATION": refined to match the
+// user's own uploaded character reference sheets more closely (the same
+// art used for the standalone claymock UI mockup's companion widget) —
+// warm semi-realistic webtoon-style shading rather than flat vector, long
+// wavy dark-chestnut-brown hair with soft face-framing layers, warm brown
+// eyes, and a gentle closed or open smile. Round glasses + cream top are
+// kept (the production SVG mascot's own established default look, see
+// companion-config.ts's DEFAULT_GLASSES/DEFAULT_OUTFIT). Still admin-
+// triggered and fully editable per-generation via promptOverride — this
+// is only the starting default.
 const DEFAULT_IMAGE_PROMPT =
   "A cute, friendly full-body mascot character for a warehouse and logistics office app, standing in a " +
-  "relaxed front-facing pose. Round glasses, wavy shoulder-length brown hair, a cream/beige top. Flat " +
-  "vector illustration style with soft cel shading, warm and approachable, centered in frame, plain solid " +
-  "white background, no text, no watermark, no logo.";
+  "relaxed front-facing pose, one hand raised in a small wave. Warm semi-realistic webtoon/storybook " +
+  "illustration style with soft gradient cel shading (not flat vector) — long wavy dark chestnut-brown " +
+  "hair with soft face-framing layers, warm brown eyes with a gentle friendly smile, round glasses, " +
+  "wearing a cream/off-white top. Centered in frame, plain solid white background, no text, no " +
+  "watermark, no logo.";
 
 export type GenerateImageResult = { error: string | null; imageUrl: string | null };
 

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { login, type LoginState } from "./actions";
+import { LoginHero3D } from "@/components/login/login-hero-3d";
 
 const initialState: LoginState = { error: null };
 
@@ -9,7 +10,17 @@ export default function LoginPage() {
   const [state, formAction, pending] = useActionState(login, initialState);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+    <div className="flex min-h-screen items-center justify-center gap-16 bg-slate-950 px-4 py-10">
+      {/* 2026-09-09 — decorative 3D hero, same rotating-package scene as the
+          claymock UI mockup's Landing page. /login is production's only
+          public-facing page (everything else sits behind auth), so this is
+          where "the real 3D on the real URL" lands. Hidden below lg and
+          wrapped in two independent failure layers (see login-hero-3d.tsx)
+          so it can never affect the actual sign-in form beside it. */}
+      <div className="hidden h-80 w-80 shrink-0 lg:block xl:h-96 xl:w-96">
+        <LoginHero3D />
+      </div>
+
       <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">
         <div className="mb-8 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
