@@ -6656,6 +6656,38 @@ export type Database = {
           },
         ];
       };
+      task_daily_time_log: {
+        Row: {
+          id: string;
+          task_id: string;
+          log_date: string;
+          seconds_spent: number;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          task_id: string;
+          log_date: string;
+          seconds_spent?: number;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          task_id?: string;
+          log_date?: string;
+          seconds_spent?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "task_daily_time_log_task_id_fkey";
+            columns: ["task_id"];
+            isOneToOne: false;
+            referencedRelation: "tasks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       washing_entries: {
         Row: {
           id: string;
@@ -6993,6 +7025,14 @@ export type Database = {
       };
     };
     Functions: {
+      add_task_daily_time: {
+        Args: {
+          p_task_id: string;
+          p_log_date: string;
+          p_seconds: number;
+        };
+        Returns: undefined;
+      };
       format_document_no: {
         Args: {
           p_company_short_code: string;

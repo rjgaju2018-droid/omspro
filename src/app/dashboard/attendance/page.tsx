@@ -387,6 +387,24 @@ export default async function AttendancePage({
       .map((e) => ({ id: e.id, name: e.name, companyName: companyName.get(e.company_id) ?? "—" }));
     taskWebsites = Array.from(new Set((stores ?? []).map((s) => s.name)));
 
+    // 2026-09-09 — today's (IST) committed task_daily_time_log seconds per
+    // task, for the "how much did I do on THIS task today" figure — a
+    // separate concern from tasks.time_spent_seconds (the lifetime total).
+    // Genuinely dependent on myTasks' ids resolving first, so this is a
+    // second, sequential query rather than folded into the Promise.all
+    // above (matches this codebase's own "Promise.all only for independent
+    // queries" convention).
+    const myTaskIds = (myTasks ?? []).map((t) => t.id);
+    const todaySecondsByTaskId = new Map<string, number>();
+    if (myTaskIds.length) {
+      const { data: todayRows } = await taskSupabase
+        .from("task_daily_time_log")
+        .select("task_id, seconds_spent")
+        .in("task_id", myTaskIds)
+        .eq("log_date", todayIST());
+      for (const r of todayRows ?? []) todaySecondsByTaskId.set(r.task_id, r.seconds_spent);
+    }
+
     // assignTask() allows cross-company assignment, so fetch any
     // referenced employee id that isn't already covered — same pattern as
     // the old standalone /dashboard/tasks page. (Now largely redundant
@@ -418,6 +436,7 @@ export default async function AttendancePage({
       timeSpentSeconds: t.time_spent_seconds,
       firstStartedAt: t.first_started_at,
       lastPausedAt: t.last_paused_at,
+      todaySeconds: todaySecondsByTaskId.get(t.id) ?? 0,
     }));
 
     assignedByMeRows = (assignedByMe ?? []).map((t) => ({

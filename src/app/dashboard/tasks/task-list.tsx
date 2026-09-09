@@ -6,7 +6,7 @@
 // Start / ⏸ Pause / ✔ Done buttons + live elapsed-time display.
 import { useEffect, useState } from "react";
 import { startTaskTimer, pauseTaskTimer, markTaskDone } from "./actions";
-import { liveElapsedSeconds, formatDuration, formatISTTime } from "@/lib/attendance/timer";
+import { liveElapsedSeconds, liveElapsedSecondsForToday, formatDuration, formatISTTime } from "@/lib/attendance/timer";
 
 export type TaskRow = {
   id: string;
@@ -22,6 +22,12 @@ export type TaskRow = {
   timeSpentSeconds: number;
   firstStartedAt: string | null;
   lastPausedAt: string | null;
+  // 2026-09-09: seconds already committed to today's (IST) breakdown row in
+  // task_daily_time_log, as of the last Start/Pause/Done. The live "today so
+  // far" figure shown in the UI is this plus whatever's accrued since, via
+  // liveElapsedSecondsForToday() — mirrors how timeSpentSeconds (lifetime)
+  // + liveElapsedSeconds() already works. Never touches the lifetime total.
+  todaySeconds: number;
 };
 
 const PRIORITY_BADGE: Record<string, string> = {
@@ -69,13 +75,13 @@ export function TaskList({ tasks }: { tasks: TaskRow[] }) {
   async function handleStart(id: string) {
     const result = await withPending(id, () => startTaskTimer(id));
     if (!result.error) {
-      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, timerStartedAt: result.timerStartedAt, timeSpentSeconds: result.timeSpentSeconds, firstStartedAt: result.firstStartedAt, status: result.status ?? r.status } : r)));
+      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, timerStartedAt: result.timerStartedAt, timeSpentSeconds: result.timeSpentSeconds, firstStartedAt: result.firstStartedAt, status: result.status ?? r.status, todaySeconds: result.todaySeconds } : r)));
     }
   }
   async function handlePause(id: string) {
     const result = await withPending(id, () => pauseTaskTimer(id));
     if (!result.error) {
-      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, timerStartedAt: result.timerStartedAt, timeSpentSeconds: result.timeSpentSeconds, lastPausedAt: result.lastPausedAt } : r)));
+      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, timerStartedAt: result.timerStartedAt, timeSpentSeconds: result.timeSpentSeconds, lastPausedAt: result.lastPausedAt, todaySeconds: result.todaySeconds } : r)));
     }
   }
   async function handleDone(id: string) {
@@ -84,7 +90,7 @@ export function TaskList({ tasks }: { tasks: TaskRow[] }) {
       setRows((prev) =>
         prev.map((r) =>
           r.id === id
-            ? { ...r, status: "Done", timerStartedAt: result.timerStartedAt, timeSpentSeconds: result.timeSpentSeconds, lastPausedAt: result.lastPausedAt }
+            ? { ...r, status: "Done", timerStartedAt: result.timerStartedAt, timeSpentSeconds: result.timeSpentSeconds, lastPausedAt: result.lastPausedAt, todaySeconds: result.todaySeconds }
             : r
         )
       );
@@ -110,8 +116,13 @@ export function TaskList({ tasks }: { tasks: TaskRow[] }) {
               <p className="mt-0.5 text-xs text-slate-400">From {t.assignedByName}</p>
             </div>
             <div className="flex flex-col items-end gap-1 text-xs">
-              <div className="font-semibold text-amber-800">
-                {formatDuration(liveElapsedSeconds({ timeSpentSeconds: t.timeSpentSeconds, timerStartedAt: t.timerStartedAt }, nowMs))}
+              <div className="flex items-baseline gap-2">
+                <span className="rounded-md bg-sky-50 px-1.5 py-0.5 font-semibold text-sky-700">
+                  Today {formatDuration(liveElapsedSecondsForToday({ timerStartedAt: t.timerStartedAt }, t.todaySeconds, nowMs))}
+                </span>
+                <span className="font-semibold text-amber-800" title="Total time spent on this task across all days">
+                  Total {formatDuration(liveElapsedSeconds({ timeSpentSeconds: t.timeSpentSeconds, timerStartedAt: t.timerStartedAt }, nowMs))}
+                </span>
               </div>
               <div className="text-slate-400">
                 {formatISTTime(t.firstStartedAt)} → {t.timerStartedAt ? "Running…" : formatISTTime(t.lastPausedAt)}

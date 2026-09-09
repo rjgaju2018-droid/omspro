@@ -63,3 +63,43 @@ export function addDaysToDateStr(dateStr: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+/** "YYYY-MM-DD" IST calendar date for an arbitrary instant (not just "now") — same istShiftedNow() trick, generalized. */
+export function istDateFromInstant(iso: string): string {
+  return new Date(new Date(iso).getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * 2026-09-09 — splits a [startIso, endIso) stopped-timer interval into one
+ * segment per IST calendar day it touches, e.g. a task timer left running
+ * from 11pm to 1am IST produces 2 segments (yesterday's last hour, today's
+ * first hour). Used by Task Assignment's timer (see tasks/actions.ts) to
+ * credit task_daily_time_log correctly even across a midnight boundary —
+ * every OTHER caller in this codebase (Daily Work Report, punch in/out) is
+ * same-day by construction and never needs this, hence it lives alongside
+ * the other IST helpers rather than duplicated locally.
+ */
+export function splitIntervalByISTDay(startIso: string, endIso: string): { logDate: string; seconds: number }[] {
+  const start = new Date(startIso).getTime();
+  const end = new Date(endIso).getTime();
+  if (!(end > start)) return [];
+  const segments: { logDate: string; seconds: number }[] = [];
+  let cursorReal = start;
+  while (cursorReal < end) {
+    const cursorShifted = cursorReal + IST_OFFSET_MS;
+    const logDate = new Date(cursorShifted).toISOString().slice(0, 10);
+    // Next IST midnight, expressed back in real (unshifted) instant terms.
+    const nextMidnightShifted = Date.UTC(
+      new Date(cursorShifted).getUTCFullYear(),
+      new Date(cursorShifted).getUTCMonth(),
+      new Date(cursorShifted).getUTCDate() + 1,
+      0, 0, 0, 0
+    );
+    const nextMidnightReal = nextMidnightShifted - IST_OFFSET_MS;
+    const segmentEndReal = Math.min(nextMidnightReal, end);
+    const seconds = Math.max(0, Math.floor((segmentEndReal - cursorReal) / 1000));
+    if (seconds > 0) segments.push({ logDate, seconds });
+    cursorReal = segmentEndReal;
+  }
+  return segments;
+}

@@ -27,3 +27,31 @@ export function formatISTTime(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" });
 }
+
+/**
+ * 2026-09-09 — live "today so far" seconds for a task's timer, combining
+ * (a) whatever's already committed into task_daily_time_log for today (via
+ * add_task_daily_time, written on every Pause/Done) with (b) any
+ * currently-running portion that falls on today's IST date — mirrors
+ * liveElapsedSeconds() above but scoped to one IST calendar day instead of
+ * the task's whole lifetime, so "today" correctly resets to 0 right after
+ * IST midnight even while nothing has been paused yet today. If the timer
+ * has been running continuously since before today's midnight, only the
+ * post-midnight portion counts (matches splitIntervalByISTDay's own
+ * day-boundary logic — see ist-date.ts).
+ */
+export function liveElapsedSecondsForToday(
+  row: { timerStartedAt: string | null },
+  committedTodaySeconds: number,
+  nowMs: number
+): number {
+  if (!row.timerStartedAt) return committedTodaySeconds;
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const nowShiftedDate = new Date(nowMs + IST_OFFSET_MS);
+  const todayMidnightShifted = Date.UTC(nowShiftedDate.getUTCFullYear(), nowShiftedDate.getUTCMonth(), nowShiftedDate.getUTCDate(), 0, 0, 0, 0);
+  const todayMidnightReal = todayMidnightShifted - IST_OFFSET_MS;
+  const timerStartReal = new Date(row.timerStartedAt).getTime();
+  const runningSinceToday = Math.max(timerStartReal, todayMidnightReal);
+  const liveTodaySeconds = Math.max(0, Math.floor((nowMs - runningSinceToday) / 1000));
+  return committedTodaySeconds + liveTodaySeconds;
+}

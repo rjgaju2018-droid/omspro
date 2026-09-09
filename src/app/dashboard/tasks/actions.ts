@@ -28,8 +28,51 @@
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/require-capability";
 import { createServiceRoleClient } from "@/lib/supabase/server";
-import { todayIST } from "@/lib/attendance/ist-date";
+import { todayIST, splitIntervalByISTDay } from "@/lib/attendance/ist-date";
 import { notifyCompanion } from "@/lib/companion/notify";
+
+/**
+ * 2026-09-09 — commits a stopped timer interval into task_daily_time_log,
+ * split across IST calendar-day boundaries (see splitIntervalByISTDay).
+ * Called from pauseTaskTimer/markTaskDone right after they've already
+ * updated tasks.time_spent_seconds — this is purely an additive breakdown
+ * of that same total, never a second source of truth for it. Best-effort:
+ * a failure here must never undo or block the timer action that already
+ * committed (same principle as markTaskDone's daily_work_logs insert
+ * below) — logged and swallowed, not thrown.
+ *
+ * Returns today's committed total afterward (queried fresh rather than
+ * computed locally, since a multi-day-spanning interval may or may not
+ * have touched today at all) so callers can hand the client an accurate
+ * "today so far" figure without a full page refetch.
+ */
+async function recordDailySegmentsAndGetToday(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  taskId: string,
+  startIso: string,
+  endIso: string
+): Promise<number> {
+  try {
+    const segments = splitIntervalByISTDay(startIso, endIso);
+    for (const seg of segments) {
+      const { error } = await supabase.rpc("add_task_daily_time", {
+        p_task_id: taskId,
+        p_log_date: seg.logDate,
+        p_seconds: seg.seconds,
+      });
+      if (error) console.error("recordDailySegmentsAndGetToday: add_task_daily_time failed", seg, error);
+    }
+  } catch (e) {
+    console.error("recordDailySegmentsAndGetToday: failed to split/record interval", e);
+  }
+  const { data } = await supabase
+    .from("task_daily_time_log")
+    .select("seconds_spent")
+    .eq("task_id", taskId)
+    .eq("log_date", todayIST())
+    .maybeSingle();
+  return data?.seconds_spent ?? 0;
+}
 
 export type SimpleActionState = { error: string | null; success: boolean };
 
@@ -100,7 +143,13 @@ type TimerActionResult = {
   firstStartedAt: string | null;
   lastPausedAt: string | null;
   status: string | null;
+  // 2026-09-09 — committed seconds for TODAY (IST) specifically, from
+  // task_daily_time_log — see recordDailySegmentsAndGetToday above. Distinct
+  // from timeSpentSeconds, which is the task's whole-lifetime total.
+  todaySeconds: number;
 };
+
+const EMPTY_TIMER_RESULT = { timerStartedAt: null, timeSpentSeconds: 0, firstStartedAt: null, lastPausedAt: null, status: null, todaySeconds: 0 };
 
 export async function startTaskTimer(id: string): Promise<TimerActionResult> {
   const employee = await requireCapability("task_management");
@@ -111,9 +160,10 @@ export async function startTaskTimer(id: string): Promise<TimerActionResult> {
     .eq("id", id)
     .eq("assigned_to_employee_id", employee.id) // only the assignee can run their own timer
     .single();
-  if (fetchError || !existing) return { error: fetchError?.message ?? "Task not found.", timerStartedAt: null, timeSpentSeconds: 0, firstStartedAt: null, lastPausedAt: null, status: null };
+  if (fetchError || !existing) return { error: fetchError?.message ?? "Task not found.", ...EMPTY_TIMER_RESULT };
   if (existing.timer_started_at) {
-    return { error: null, timerStartedAt: existing.timer_started_at, timeSpentSeconds: existing.time_spent_seconds, firstStartedAt: existing.first_started_at, lastPausedAt: null, status: existing.status };
+    const { data: todayRow } = await supabase.from("task_daily_time_log").select("seconds_spent").eq("task_id", id).eq("log_date", todayIST()).maybeSingle();
+    return { error: null, timerStartedAt: existing.timer_started_at, timeSpentSeconds: existing.time_spent_seconds, firstStartedAt: existing.first_started_at, lastPausedAt: null, status: existing.status, todaySeconds: todayRow?.seconds_spent ?? 0 };
   }
   const now = new Date().toISOString();
   const { data, error } = await supabase
@@ -127,10 +177,11 @@ export async function startTaskTimer(id: string): Promise<TimerActionResult> {
     .eq("assigned_to_employee_id", employee.id)
     .select("timer_started_at, time_spent_seconds, first_started_at, last_paused_at, status")
     .single();
-  if (error || !data) return { error: error?.message ?? "Could not start timer.", timerStartedAt: null, timeSpentSeconds: 0, firstStartedAt: null, lastPausedAt: null, status: null };
+  if (error || !data) return { error: error?.message ?? "Could not start timer.", ...EMPTY_TIMER_RESULT };
+  const { data: todayRow } = await supabase.from("task_daily_time_log").select("seconds_spent").eq("task_id", id).eq("log_date", todayIST()).maybeSingle();
   revalidatePath("/dashboard/attendance");
   revalidatePath("/dashboard/attendance/admin");
-  return { error: null, timerStartedAt: data.timer_started_at, timeSpentSeconds: data.time_spent_seconds, firstStartedAt: data.first_started_at, lastPausedAt: data.last_paused_at, status: data.status };
+  return { error: null, timerStartedAt: data.timer_started_at, timeSpentSeconds: data.time_spent_seconds, firstStartedAt: data.first_started_at, lastPausedAt: data.last_paused_at, status: data.status, todaySeconds: todayRow?.seconds_spent ?? 0 };
 }
 
 export async function pauseTaskTimer(id: string): Promise<TimerActionResult> {
@@ -142,12 +193,14 @@ export async function pauseTaskTimer(id: string): Promise<TimerActionResult> {
     .eq("id", id)
     .eq("assigned_to_employee_id", employee.id)
     .single();
-  if (fetchError || !existing) return { error: fetchError?.message ?? "Task not found.", timerStartedAt: null, timeSpentSeconds: 0, firstStartedAt: null, lastPausedAt: null, status: null };
+  if (fetchError || !existing) return { error: fetchError?.message ?? "Task not found.", ...EMPTY_TIMER_RESULT };
   if (!existing.timer_started_at) {
-    return { error: null, timerStartedAt: null, timeSpentSeconds: existing.time_spent_seconds, firstStartedAt: existing.first_started_at, lastPausedAt: null, status: existing.status };
+    const { data: todayRow } = await supabase.from("task_daily_time_log").select("seconds_spent").eq("task_id", id).eq("log_date", todayIST()).maybeSingle();
+    return { error: null, timerStartedAt: null, timeSpentSeconds: existing.time_spent_seconds, firstStartedAt: existing.first_started_at, lastPausedAt: null, status: existing.status, todaySeconds: todayRow?.seconds_spent ?? 0 };
   }
   const now = new Date();
-  const elapsed = Math.max(0, Math.floor((now.getTime() - new Date(existing.timer_started_at).getTime()) / 1000));
+  const startedAtIso = existing.timer_started_at;
+  const elapsed = Math.max(0, Math.floor((now.getTime() - new Date(startedAtIso).getTime()) / 1000));
   const nowIso = now.toISOString();
   const { data, error } = await supabase
     .from("tasks")
@@ -156,10 +209,16 @@ export async function pauseTaskTimer(id: string): Promise<TimerActionResult> {
     .eq("assigned_to_employee_id", employee.id)
     .select("timer_started_at, time_spent_seconds, first_started_at, last_paused_at, status")
     .single();
-  if (error || !data) return { error: error?.message ?? "Could not pause timer.", timerStartedAt: null, timeSpentSeconds: 0, firstStartedAt: null, lastPausedAt: null, status: null };
+  if (error || !data) return { error: error?.message ?? "Could not pause timer.", ...EMPTY_TIMER_RESULT };
+  // 2026-09-09 — commit this stopped interval into task_daily_time_log,
+  // split across any IST midnight it crossed, so it's counted even though
+  // the task itself is still incomplete (only Done previously synced
+  // anything visible day-by-day — see this file's header comment on the
+  // new table for the full "why").
+  const todaySeconds = await recordDailySegmentsAndGetToday(supabase, id, startedAtIso, nowIso);
   revalidatePath("/dashboard/attendance");
   revalidatePath("/dashboard/attendance/admin");
-  return { error: null, timerStartedAt: data.timer_started_at, timeSpentSeconds: data.time_spent_seconds, firstStartedAt: data.first_started_at, lastPausedAt: data.last_paused_at, status: data.status };
+  return { error: null, timerStartedAt: data.timer_started_at, timeSpentSeconds: data.time_spent_seconds, firstStartedAt: data.first_started_at, lastPausedAt: data.last_paused_at, status: data.status, todaySeconds };
 }
 
 /**
@@ -181,14 +240,15 @@ export async function markTaskDone(id: string): Promise<TimerActionResult & { su
     .eq("id", id)
     .eq("assigned_to_employee_id", employee.id)
     .single();
-  if (!existing) return { error: "Task not found.", success: false, timerStartedAt: null, timeSpentSeconds: 0, firstStartedAt: null, lastPausedAt: null, status: null };
+  if (!existing) return { error: "Task not found.", success: false, ...EMPTY_TIMER_RESULT };
 
   const now = new Date();
   const nowIso = now.toISOString();
-  const timerPatch = existing.timer_started_at
+  const wasRunningSince = existing.timer_started_at;
+  const timerPatch = wasRunningSince
     ? {
         timer_started_at: null,
-        time_spent_seconds: existing.time_spent_seconds + Math.max(0, Math.floor((now.getTime() - new Date(existing.timer_started_at).getTime()) / 1000)),
+        time_spent_seconds: existing.time_spent_seconds + Math.max(0, Math.floor((now.getTime() - new Date(wasRunningSince).getTime()) / 1000)),
         last_paused_at: nowIso,
       }
     : {};
@@ -199,7 +259,14 @@ export async function markTaskDone(id: string): Promise<TimerActionResult & { su
     .eq("assigned_to_employee_id", employee.id)
     .select("timer_started_at, time_spent_seconds, first_started_at, last_paused_at, status")
     .single();
-  if (error || !data) return { error: error?.message ?? "Could not complete task.", success: false, timerStartedAt: null, timeSpentSeconds: 0, firstStartedAt: null, lastPausedAt: null, status: null };
+  if (error || !data) return { error: error?.message ?? "Could not complete task.", success: false, ...EMPTY_TIMER_RESULT };
+
+  // 2026-09-09 — same day-breakdown commit as pauseTaskTimer, only when the
+  // timer was actually running at the moment of Done (mirrors the
+  // conditional timerPatch above).
+  const todaySeconds = wasRunningSince
+    ? await recordDailySegmentsAndGetToday(supabase, id, wasRunningSince, nowIso)
+    : (await supabase.from("task_daily_time_log").select("seconds_spent").eq("task_id", id).eq("log_date", todayIST()).maybeSingle()).data?.seconds_spent ?? 0;
 
   // Best-effort: a failure here shouldn't undo the task being marked
   // Done (the task update above already committed) — log server-side and
@@ -224,7 +291,7 @@ export async function markTaskDone(id: string): Promise<TimerActionResult & { su
 
   revalidatePath("/dashboard/attendance");
   revalidatePath("/dashboard/attendance/admin");
-  return { error: null, success: true, timerStartedAt: data.timer_started_at, timeSpentSeconds: data.time_spent_seconds, firstStartedAt: data.first_started_at, lastPausedAt: data.last_paused_at, status: data.status };
+  return { error: null, success: true, timerStartedAt: data.timer_started_at, timeSpentSeconds: data.time_spent_seconds, firstStartedAt: data.first_started_at, lastPausedAt: data.last_paused_at, status: data.status, todaySeconds };
 }
 
 /** Assigner can cancel a task they created, as long as it isn't already Done. */

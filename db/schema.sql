@@ -3463,6 +3463,31 @@ CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to_employee_id, status);
 CREATE INDEX idx_tasks_assigned_by ON tasks(assigned_by_employee_id);
 CREATE INDEX idx_tasks_company ON tasks(company_id, status);
 
+-- 2026-09-09 — additive per-IST-day breakdown of tasks.time_spent_seconds
+-- (never the source of truth for the lifetime total — see
+-- db/2026-09-09-task-daily-time-log.sql for the full context comment).
+CREATE TABLE task_daily_time_log (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id        uuid NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  log_date       date NOT NULL,
+  seconds_spent  int  NOT NULL DEFAULT 0,
+  updated_at     timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (task_id, log_date)
+);
+CREATE INDEX idx_task_daily_time_log_task ON task_daily_time_log(task_id, log_date);
+
+CREATE OR REPLACE FUNCTION add_task_daily_time(p_task_id uuid, p_log_date date, p_seconds int)
+RETURNS void
+LANGUAGE sql
+AS $$
+  INSERT INTO task_daily_time_log (task_id, log_date, seconds_spent, updated_at)
+  VALUES (p_task_id, p_log_date, GREATEST(p_seconds, 0), now())
+  ON CONFLICT (task_id, log_date)
+  DO UPDATE SET
+    seconds_spent = task_daily_time_log.seconds_spent + GREATEST(p_seconds, 0),
+    updated_at = now();
+$$;
+
 -- =============================================================================
 -- 2026-08-12 (round 8): Leave Request -> MD/Admin Approval -> Coverage
 -- Assignment. An employee applies (with an application/reason text) for a
