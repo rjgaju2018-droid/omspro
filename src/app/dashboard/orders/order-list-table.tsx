@@ -224,6 +224,32 @@ export function OrderListTable({
     return !!o.dispatch_date && o.dispatch_date < todayStr && !NON_LATE_STATUSES.includes(o.status);
   }
 
+  // 2026-09-09 — "ye pahle dikhta tha abhi nahi dikhta order ko sheet ke
+  // jese bana rakha hai": the 2026-08-26 "Excel jaisa" grid redesign (see
+  // this file's own header comment) tucked the Etsy/eBay/Amazon fee-match
+  // detail behind the per-row expand panel, same as it did for freight
+  // before 2026-09-04 promoted freight to an always-visible column. Doing
+  // the same for the net marketplace-fee TOTAL here — full itemized lines
+  // stay in the expand panel below, this is just the always-visible
+  // headline number so it's not lost inside a dense sheet-like table
+  // anymore. Only one of the three ever matches a given real order in
+  // practice, but this doesn't assume that — if more than one somehow
+  // matched, all are shown together (never summed, different currencies).
+  function marketplaceFeeText(o: OrderRow): string {
+    const parts: string[] = [];
+    const etsy = etsyFeesByOrder[o.id];
+    if (etsy) parts.push(`₹${etsy.totalFeesInr.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`);
+    const ebay = ebayFeesByOrder[o.id];
+    if (ebay) parts.push(`$${ebay.totalFeesUsd.toLocaleString("en-US", { maximumFractionDigits: 2 })}`);
+    const amazon = amazonFeesByOrder[o.id];
+    if (amazon) {
+      for (const t of amazon.totalsByCurrency) {
+        parts.push(`${t.totalFees.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${t.currency}`);
+      }
+    }
+    return parts.join(", ");
+  }
+
   // Column definitions drive the header row, the per-column filter row, the
   // Columns show/hide panel, and every data cell — one source of truth so
   // "add/hide/filter a column" never needs touching 3 different places.
@@ -438,6 +464,21 @@ export function OrderListTable({
         // conflated with "not captured" — see order-status-summary.ts.
         if (!s || s.freightAmt == null) return "—";
         return `${s.freightAmt.toFixed(2)}${s.freightCurrency ? ` ${s.freightCurrency}` : ""}`;
+      },
+    },
+    {
+      key: "marketplaceFee",
+      label: "Marketplace Fee",
+      filter: "text",
+      tdClass: "whitespace-nowrap text-right",
+      filterValue: (o) => marketplaceFeeText(o),
+      cellTitle: (o) =>
+        etsyFeesByOrder[o.id] || ebayFeesByOrder[o.id] || amazonFeesByOrder[o.id]
+          ? "Click ▾ below for the itemized statement lines"
+          : "",
+      cell: (o) => {
+        const text = marketplaceFeeText(o);
+        return text ? <span className="text-indigo-700">{text}</span> : <span className="text-slate-300">—</span>;
       },
     },
     {

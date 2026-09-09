@@ -156,6 +156,15 @@ export default async function ReportsPage({
           >
             🧑‍💼 Salary / Attendance Report
           </Link>
+          {/* 2026-09-09 — "sabhi order ke store expances kaha dikh rahe hai
+              ... perticular order / monthly / store wise": real matched
+              Etsy/eBay/Amazon marketplace fees, 3 views. */}
+          <Link
+            href="/dashboard/reports/store-expenses"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            🧾 Store Expense Report
+          </Link>
         </div>
       </div>
 

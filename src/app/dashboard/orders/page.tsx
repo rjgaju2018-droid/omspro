@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireCapability } from "@/lib/auth/require-capability";
 import { createClient } from "@/lib/supabase/server";
 import { getOrderStatusSummaries } from "@/lib/orders/order-status-summary";
+import { matchMarketplaceFees } from "@/lib/orders/marketplace-fees";
 import { OrderListTable } from "./order-list-table";
 
 const STATUSES = ["Pending", "Confirmed", "In Production", "Dispatched", "Delivered", "Hold", "Cancelled", "Returned"];
@@ -104,26 +105,14 @@ export default async function OrdersPage({
   // order_id link (see documents/actions.ts's savePurchaseBill).
   const orderIds = (orders ?? []).map((o) => o.id);
 
-  // 2026-08-13 (see comment further down, kept here since normalizeOrderNo
-  // is now needed before the marketplace fee queries fire, not after) —
-  // marketplace_order_no is sometimes typed with a leading "#" and
-  // sometimes without; none of the 3 ledger-side columns ever contain one.
-  const normalizeOrderNo = (v: string | null | undefined): string | null => {
-    const t = v?.trim().replace(/^#/, "").trim();
-    return t || null;
-  };
-  const marketplaceOrderNos = Array.from(
-    new Set((orders ?? []).map((o) => normalizeOrderNo(o.marketplace_order_no)).filter((x): x is string => !!x))
-  );
-
   // 2026-08-17 performance fix — these queries each only depend on
-  // orderIds/marketplaceOrderNos computed above, never on each other's
-  // results, but were previously awaited one at a time — a fully
-  // sequential chain of round-trips on every Orders hub page load. Running
-  // them together cuts that to the slowest single query instead of the sum
-  // of all of them. Same empty-array short-circuit as before (skip the
-  // query entirely, resolve to { data: [] }) — Promise.all accepts a plain
-  // value alongside real promises just fine.
+  // orderIds computed above, never on each other's results, but were
+  // previously awaited one at a time — a fully sequential chain of
+  // round-trips on every Orders hub page load. Running them together cuts
+  // that to the slowest single query instead of the sum of all of them.
+  // Same empty-array short-circuit as before (skip the query entirely,
+  // resolve to { data: [] }) — Promise.all accepts a plain value alongside
+  // real promises just fine.
   //
   // 2026-09-04 — purchase_bills/dispatch_invoices were fetched and reduced
   // into purchasesByOrder/trackingByOrder right here; that's now
@@ -132,45 +121,33 @@ export default async function OrdersPage({
   // purchased-from/Purchase-Bill/delivered/tracking/freight sourcing rules
   // live in exactly one place. Run alongside the other independent queries
   // below, same Promise.all batching as before.
-  const [{ data: refunds }, { data: etsyLines }, { data: ebayTaxLines }, { data: amazonLines }, statusByOrder] =
-    await Promise.all([
-      orderIds.length
-        ? supabase
-            .from("order_refunds")
-            .select("order_id, refund_amount, refund_currency, refund_date, credit_note_id")
-            .in("order_id", orderIds)
-        : { data: [] },
-      marketplaceOrderNos.length
-        ? supabase
-            .from("etsy_ledger_lines")
-            .select("company_id, order_number, txn_date, type, title, info, amount, fees_and_taxes, net, currency")
-            .in("company_id", effectiveCompanyIds)
-            .in("order_number", marketplaceOrderNos)
-        : { data: [] },
-      marketplaceOrderNos.length
-        ? supabase
-            .from("ebay_tax_invoice_lines")
-            .select("company_id, order_number, txn_date, description, memo, fee_type, currency, net_amount, igst_amount, total_amount")
-            .in("company_id", effectiveCompanyIds)
-            .in("order_number", marketplaceOrderNos)
-        : { data: [] },
-      marketplaceOrderNos.length
-        ? supabase
-            .from("amazon_transactions")
-            .select("company_id, order_id, txn_date, transaction_type, product_details, amazon_fees, total_amount, currency")
-            .in("company_id", effectiveCompanyIds)
-            .in("order_id", marketplaceOrderNos)
-        : { data: [] },
-      getOrderStatusSummaries(
-        supabase,
-        (orders ?? []).map((o) => ({
-          id: o.id,
-          vendor_party_id: o.vendor_party_id,
-          advance_tracking: o.advance_tracking,
-          final_tracking: o.final_tracking,
-        }))
-      ),
-    ]);
+  //
+  // 2026-09-09 — the Etsy/eBay/Amazon fee-matching queries + matching logic
+  // (2026-08-13, "store par jab order aaya to kon kon si fee lagi") moved
+  // into matchMarketplaceFees() (src/lib/orders/marketplace-fees.ts) so the
+  // new Store Expense Report can reuse the EXACT same matching semantics
+  // instead of a second hand-copied version drifting out of sync over
+  // time. No behavior change here — same queries, same company scoping,
+  // same normalizeOrderNo() (now imported from that shared module).
+  const [{ data: refunds }, marketplaceFees, statusByOrder] = await Promise.all([
+    orderIds.length
+      ? supabase
+          .from("order_refunds")
+          .select("order_id, refund_amount, refund_currency, refund_date, credit_note_id")
+          .in("order_id", orderIds)
+      : { data: [] },
+    matchMarketplaceFees(supabase, orders ?? [], effectiveCompanyIds),
+    getOrderStatusSummaries(
+      supabase,
+      (orders ?? []).map((o) => ({
+        id: o.id,
+        vendor_party_id: o.vendor_party_id,
+        advance_tracking: o.advance_tracking,
+        final_tracking: o.final_tracking,
+      }))
+    ),
+  ]);
+  const { etsyFeesByOrder, ebayFeesByOrder, amazonFeesByOrder } = marketplaceFees;
 
   // Pending item 2 (Hold/Cancel/Refund) — surface any refund(s) already
   // entered against each order, and whether one auto-generated a Credit
@@ -188,160 +165,11 @@ export default async function OrdersPage({
 
   // 2026-08-13 — "store par jab order aaya to kon kon si fee lagi vo uske
   // store ke statement se milani padegi" (per-order fee reconciliation).
-  // etsy_ledger_lines.order_number is a generated column extracted from
-  // the real Etsy Ledger CSV's Info/Title text (verified against 7 real
-  // months, Jan-Jul 2026 — see db/2026-08-13-etsy-order-matching-and-
-  // invoice-fix.sql). Matched by company_id + marketplace_order_no so an
-  // order only ever sees fee rows from its own company's ledger. Orders
-  // that aren't Etsy (or have no ledger rows yet) simply get no match —
-  // this doesn't need to know which marketplace an order came from.
-  //
-  // 2026-08-13 (later same day) — user flagged that marketplace_order_no
-  // is sometimes typed/entered with a leading "#" (e.g. "#1234567890")
-  // and sometimes without, across Etsy/eBay/Amazon orders. None of the
-  // 3 ledger-side columns this matches against ever contain a "#" — see
-  // normalizeOrderNo above (moved up so marketplaceOrderNos is available
-  // before the parallel query block fires).
-  type EtsyFeeLine = {
-    date: string | null;
-    type: string | null;
-    title: string | null;
-    info: string | null;
-    amount: number;
-    fees: number;
-    net: number;
-    currency: string | null;
-  };
-  const etsyFeesByOrder: Record<string, { lines: EtsyFeeLine[]; totalFeesInr: number }> = {};
-  for (const o of orders ?? []) {
-    const orderNo = normalizeOrderNo(o.marketplace_order_no);
-    if (!orderNo) continue;
-    const matches = (etsyLines ?? []).filter(
-      (l) => l.company_id === o.company_id && l.order_number === orderNo
-    );
-    if (matches.length === 0) continue;
-    etsyFeesByOrder[o.id] = {
-      lines: matches
-        .map((l) => ({
-          date: l.txn_date,
-          type: l.type,
-          title: l.title,
-          info: l.info,
-          amount: Number(l.amount ?? 0),
-          fees: Number(l.fees_and_taxes ?? 0),
-          net: Number(l.net ?? 0),
-          currency: l.currency,
-        }))
-        .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "")),
-      // Fees & Taxes is negative for charges, positive for TCS credits —
-      // summing it directly (not abs()) gives the real net fee impact,
-      // matching how the ledger itself signs these amounts.
-      totalFeesInr: matches.reduce((sum, l) => sum + Number(l.fees_and_taxes ?? 0), 0),
-    };
-  }
-
-  // 2026-08-13 — same matching for eBay, now that a real eBay export has
-  // been supplied: ebay_tax_invoice_lines.order_number is a NATIVE column
-  // in eBay's own "Tax invoice detail" CSV (no regex extraction needed,
-  // unlike Etsy) — verified against 8 real consecutive months (Dec 2025-
-  // Jul 2026) that every non-subscription row carries a real order number
-  // in eBay's own hyphenated format (e.g. "07-13945-27087"). Every row in
-  // this report is itself a fee (Final Value Fee, International Fee,
-  // Promoted Listings fee, Regulatory Operating Fee, Subscription Fee) —
-  // total_amount is always the fee charged (shown positive in the source
-  // CSV), so it's negated here to read as a fee-impact figure, the same
-  // sign convention as Etsy's totalFeesUsd below (negative = cost).
-  // Kept as a SEPARATE map from Etsy's (not merged into one combined
-  // total) since the two are different currencies (INR vs USD) — summing
-  // them together would be meaningless.
-  type EbayFeeLine = {
-    date: string | null;
-    type: string | null;
-    description: string | null;
-    memo: string | null;
-    amount: number;
-    currency: string | null;
-  };
-  const ebayFeesByOrder: Record<string, { lines: EbayFeeLine[]; totalFeesUsd: number }> = {};
-  for (const o of orders ?? []) {
-    const orderNo = normalizeOrderNo(o.marketplace_order_no);
-    if (!orderNo) continue;
-    const matches = (ebayTaxLines ?? []).filter(
-      (l) => l.company_id === o.company_id && l.order_number === orderNo
-    );
-    if (matches.length === 0) continue;
-    ebayFeesByOrder[o.id] = {
-      lines: matches
-        .map((l) => ({
-          date: l.txn_date,
-          type: l.fee_type,
-          description: l.description,
-          memo: l.memo,
-          amount: -Number(l.total_amount ?? 0),
-          currency: l.currency,
-        }))
-        .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "")),
-      totalFeesUsd: matches.reduce((sum, l) => sum - Number(l.total_amount ?? 0), 0),
-    };
-  }
-
-  // 2026-08-13 — same matching for Amazon (new marketplace, ground-up
-  // build this round): amazon_transactions.order_id is Amazon's own real
-  // order ID (native column, no extraction needed), verified against 3
-  // real "Transactions" exports (amazon.co.uk/GBP, amazon.com/USD,
-  // amazon.com.au/AUD). amazon_fees is already signed the same way as
-  // Etsy/eBay (negative = charge) — no sign flip needed here, unlike
-  // eBay's total_amount above.
-  //
-  // 2026-08-13 (later same day) — user asked for a single Amazon section
-  // per order instead of one per currency (was previously grouped into
-  // separate collapsible blocks per currency, which read as 3 separate
-  // "Amazon" sections even though almost every real order only has one
-  // currency's worth of lines). Now all matching lines for an order are
-  // merged into one list (sorted by date), with a Currency column added
-  // to the table so a rare multi-currency order is still legible, and
-  // per-currency net-fee-impact subtotals are kept (never summed across
-  // currencies — that would be meaningless) but shown together in one
-  // header line instead of one header per currency.
-  type AmazonFeeLine = {
-    date: string | null;
-    type: string | null;
-    productDetails: string | null;
-    amazonFees: number;
-    totalAmount: number;
-    currency: string;
-  };
-  type AmazonFeeMatch = {
-    lines: AmazonFeeLine[];
-    totalsByCurrency: { currency: string; totalFees: number }[];
-  };
-  const amazonFeesByOrder: Record<string, AmazonFeeMatch> = {};
-  for (const o of orders ?? []) {
-    const orderNo = normalizeOrderNo(o.marketplace_order_no);
-    if (!orderNo) continue;
-    const matches = (amazonLines ?? []).filter(
-      (l) => l.company_id === o.company_id && l.order_id === orderNo
-    );
-    if (matches.length === 0) continue;
-    const byCurrency = new Map<string, number>();
-    for (const l of matches) {
-      const cur = l.currency ?? "?";
-      byCurrency.set(cur, (byCurrency.get(cur) ?? 0) + Number(l.amazon_fees ?? 0));
-    }
-    amazonFeesByOrder[o.id] = {
-      lines: matches
-        .map((l) => ({
-          date: l.txn_date,
-          type: l.transaction_type,
-          productDetails: l.product_details,
-          amazonFees: Number(l.amazon_fees ?? 0),
-          totalAmount: Number(l.total_amount ?? 0),
-          currency: l.currency ?? "?",
-        }))
-        .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "")),
-      totalsByCurrency: Array.from(byCurrency.entries()).map(([currency, totalFees]) => ({ currency, totalFees })),
-    };
-  }
+  // Matching logic itself now lives in matchMarketplaceFees() (see the
+  // Promise.all above and src/lib/orders/marketplace-fees.ts) — orders
+  // that aren't on a matched marketplace, or have no ledger rows yet,
+  // simply get no entry in etsyFeesByOrder/ebayFeesByOrder/
+  // amazonFeesByOrder.
 
   return (
     <div>
