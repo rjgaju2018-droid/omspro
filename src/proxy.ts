@@ -35,6 +35,18 @@ export async function proxy(request: NextRequest) {
   // cleared — logging every user straight back out right after login.
   let response = NextResponse.next({ request });
 
+  // 2026-09-09 — OMS Pro: run gracefully even when the Supabase env vars are
+  // not configured (e.g. a fresh sandbox/preview before keys are added).
+  // createServerClient(undefined, ...) THROWS, which used to 500 every
+  // route — including the new public landing page that needs no auth at
+  // all. Without these vars there is no auth session to enforce anyway, so
+  // fall through to the pages (authed pages fail on their own client
+  // creation, exactly as before). With vars configured — always the case in
+  // production — behavior is byte-for-byte unchanged.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return response;
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -64,6 +76,13 @@ export async function proxy(request: NextRequest) {
     return withCookies(NextResponse.redirect(loginUrl), response);
   }
 
+  // 2026-09-09 — OMS Pro SaaS: / is now the public marketing landing page
+  // (root page.tsx no longer redirects to /dashboard). Only bounce a
+  // signed-in user from the LANDING page itself, never from /signup — the
+  // signup page needs its own signed-out state and its own success card
+  // after company creation (an already-signed-in owner inviting a teammate
+  // on the same browser must still be able to open it).
+
   // A Supabase Auth session existing is NOT the same as "this is a real
   // employee" — a login can be created in Authentication -> Users before
   // (or without) a matching active `employees` row. Bouncing every
@@ -88,6 +107,10 @@ export async function proxy(request: NextRequest) {
     }
 
     if (request.nextUrl.pathname === "/login") {
+      return withCookies(NextResponse.redirect(new URL("/dashboard", request.url)), response);
+    }
+
+    if (request.nextUrl.pathname === "/") {
       return withCookies(NextResponse.redirect(new URL("/dashboard", request.url)), response);
     }
   }

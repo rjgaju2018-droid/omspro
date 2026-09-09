@@ -481,6 +481,11 @@ export type Database = {
           logo_url: string | null;
           master_invoice_prefix: string | null;
           weekly_off_days: unknown[];
+          // 2026-09-09 — OMS Pro SaaS trial/plan columns
+          // (db/2026-09-09-omspro-saas-signup.sql).
+          plan: string;
+          trial_ends_at: string | null;
+          created_by_signup: boolean;
           created_at: string;
         };
         Insert: {
@@ -492,6 +497,9 @@ export type Database = {
           logo_url?: string | null;
           master_invoice_prefix?: string | null;
           weekly_off_days?: unknown[];
+          plan?: string;
+          trial_ends_at?: string | null;
+          created_by_signup?: boolean;
           created_at?: string;
         };
         Update: {
@@ -503,6 +511,9 @@ export type Database = {
           logo_url?: string | null;
           master_invoice_prefix?: string | null;
           weekly_off_days?: unknown[];
+          plan?: string;
+          trial_ends_at?: string | null;
+          created_by_signup?: boolean;
           created_at?: string;
         };
         Relationships: [
@@ -7025,6 +7036,12 @@ export type Database = {
       };
     };
     Functions: {
+      trial_status: {
+        Args: {
+          p_company_id: string;
+        };
+        Returns: string;
+      };
       add_task_daily_time: {
         Args: {
           p_task_id: string;

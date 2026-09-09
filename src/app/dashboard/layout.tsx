@@ -19,6 +19,11 @@ import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ThemedShell } from "@/components/theme/themed-shell";
 import { PageTransition } from "@/components/page-transition";
 import { CompanionLiveProvider } from "@/components/companion/companion-live-provider";
+// 2026-09-09 — OMS Pro "window tab feature": browser-style workspace tabs.
+import { WorkspaceTabsProvider } from "@/components/tabs/tab-context";
+import { WorkspaceTabBar } from "@/components/tabs/workspace-tab-bar";
+// 2026-09-09 — OMS Pro vertical assistant: right-edge collapsible module panel.
+import { VerticalAssistant } from "@/components/assistant/vertical-assistant";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   let employee;
@@ -184,6 +189,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           <ThemeProvider initialThemeId={myThemePrefs?.theme_id ?? null} initialCustomAccent={myThemePrefs?.custom_accent_color ?? null}>
             <ThemedShell>
               <NavStyleProvider>
+                <WorkspaceTabsProvider>
                 <DashboardSidebar capabilities={employee.capabilities} />
                 <div className="flex flex-1 flex-col overflow-hidden">
                   <DashboardHeader
@@ -198,6 +204,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                     unreadMessageCount={unreadMessageCount ?? 0}
                     notificationItems={notificationItems}
                   />
+                  <WorkspaceTabBar />
                   <DashboardMain>
                     <TodaysCelebrationsBanner celebrations={celebrations} />
                     <PageTransition>{children}</PageTransition>
@@ -209,6 +216,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                     positioning takes it out of this flex row regardless of
                     where it sits in the tree. */}
                 <DashboardDock capabilities={employee.capabilities} />
+                {/* 2026-09-09 — vertical assistant (right edge). Client
+                    component, renders after mount; its fixed launcher tab
+                    sits above page content but below popups. */}
+                <VerticalAssistant />
+                </WorkspaceTabsProvider>
               </NavStyleProvider>
             </ThemedShell>
           </ThemeProvider>

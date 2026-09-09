@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "OMS — Nyko Mart / Rugara / CASA ARRA",
-  description: "Order Management System",
+  title: "OMS Pro — Order Management System",
+  description:
+    "OMS Pro — complete Order Management System for export & marketplace sellers. Orders, dispatch, documents, finance, inventory aur HR, sab ek jagah.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

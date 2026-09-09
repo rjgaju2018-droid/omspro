@@ -31,7 +31,7 @@ export const REFUND_COLUMNS: BulkDocColumn[] = [
 ];
 
 export const DEBIT_NOTE_COLUMNS: BulkDocColumn[] = [
-  { label: "Company Name", example: "Nyko Mart", required: true },
+  { label: "Company Name", example: "Demo Export Co.", required: true },
   { label: "Party Name", example: "", required: true, help: "Must match an existing Party Master entry." },
   { label: "Debit Note Date", example: "2026-08-08", required: true },
   { label: "PO/RF/RG No", example: "", required: false, help: "Optional — links this Debit Note back to an order." },
@@ -49,7 +49,7 @@ export const DEBIT_NOTE_COLUMNS: BulkDocColumn[] = [
 ];
 
 export const WASHING_ENTRY_COLUMNS: BulkDocColumn[] = [
-  { label: "Company Name", example: "Nyko Mart", required: true },
+  { label: "Company Name", example: "Demo Export Co.", required: true },
   { label: "Party Name", example: "", required: true, help: "The washing/dyeing vendor — must match an existing Party Master entry." },
   { label: "Chalan Date", example: "2026-08-08", required: true },
   { label: "PO/RF/RG No", example: "", required: false, help: "Optional — links this Washing Entry back to an order." },

@@ -15,7 +15,7 @@ export default function VerifyTwoFactorPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.png"
-            alt="Nyko Mart · Rugara · CASA ARRA"
+            alt="OMS Pro"
             className="mx-auto mb-4 h-16 w-16 rounded-full object-contain shadow-lg"
           />
           <h1 className="text-xl font-semibold text-white">Two-Factor Verification</h1>

@@ -26,11 +26,11 @@ export default function LoginPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.png"
-            alt="Nyko Mart · Rugara · CASA ARRA"
+            alt="OMS Pro"
             className="mx-auto mb-4 h-16 w-16 rounded-full object-contain shadow-lg"
           />
-          <h1 className="text-xl font-semibold text-white">Order Management System</h1>
-          <p className="mt-1 text-sm text-slate-400">Nyko Mart · Rugara · CASA ARRA</p>
+          <h1 className="text-xl font-semibold text-white">OMS Pro</h1>
+          <p className="mt-1 text-sm text-slate-400">Order Management System — Sign in</p>
         </div>
 
         <form action={formAction} className="space-y-4">

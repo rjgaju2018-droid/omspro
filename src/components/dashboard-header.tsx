@@ -58,7 +58,7 @@ export function DashboardHeader({
         )}
         <div>
           <div className="text-sm font-semibold leading-tight text-[var(--oms-text)]">{companyName}</div>
-          <div className="text-xs leading-tight text-[var(--oms-text-muted)]">Order Management System</div>
+          <div className="text-xs leading-tight text-[var(--oms-text-muted)]">OMS Pro</div>
         </div>
       </div>
 
