@@ -363,7 +363,8 @@ CREATE UNIQUE INDEX idx_employees_code ON employees(employee_code) WHERE employe
 ALTER TABLE employees
   ADD CONSTRAINT employees_theme_id_check
     -- 'nova' added 2026-09-08 — see db/2026-09-08-nova-theme.sql.
-    CHECK (theme_id IS NULL OR theme_id IN ('navy-gold', 'day', 'eye-comfort', 'night', 'ocean', 'nova'));
+    -- 'clay' added 2026-09-09 — see db/2026-09-09-clay-theme.sql.
+    CHECK (theme_id IS NULL OR theme_id IN ('navy-gold', 'day', 'eye-comfort', 'night', 'ocean', 'nova', 'clay'));
 ALTER TABLE employees
   ADD CONSTRAINT employees_custom_accent_color_check
     CHECK (custom_accent_color IS NULL OR custom_accent_color ~ '^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$');

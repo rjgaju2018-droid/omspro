@@ -200,6 +200,42 @@ body {
 }
 
 /*
+ * 2026-09-09 — "Clay": 7th theme, ported from the standalone Claymorphism
+ * UI mockup project's own palette (warm cream + terracotta accent) into
+ * this SAME shared theme system — same mechanism as the other 6 above, so
+ * it applies to every page that already reads `--oms-*` tokens with zero
+ * per-page changes and zero risk to anyone who doesn't switch to it.
+ *
+ * Deliberately a LIGHT sidebar (warm cream, not dark) — the only other
+ * theme with a light sidebar is Day, but Day is cool-blue/white while this
+ * is warm cream/terracotta throughout, matching the mockup's own look
+ * rather than any existing theme's palette.
+ *
+ * The "signature effect" (below, "Clay signature effect" section) is a
+ * soft embossed/pressed-in shadow on the sidebar and nav tiles, evoking
+ * the mockup's neumorphic dual-shadow technique — scoped to
+ * `[data-theme="clay"]` so the other 6 themes are untouched. See
+ * db/2026-09-09-clay-theme.sql for the full reasoning.
+ */
+[data-theme="clay"] {
+  --oms-canvas: #f6efe1;
+  --oms-header-bg: #fbf6ec;
+  --oms-header-border: #ecdfc8;
+  --oms-sidebar-bg: #fbf1e2;
+  --oms-sidebar-border: #e8d7ba;
+  --oms-sidebar-tile-bg: #f1e2c8;
+  --oms-sidebar-tile-border: #e2cfa8;
+  --oms-sidebar-text: #4a3626;
+  --oms-sidebar-text-muted: #8a7256;
+  --oms-surface: #fffaf0;
+  --oms-surface-border: #ecdfc8;
+  --oms-text: #3a2a1c;
+  --oms-text-muted: #8a7256;
+  --oms-accent: #d97a4a;
+  --oms-accent-contrast: #ffffff;
+}
+
+/*
  * 2026-08-25 — Motion & interaction system.
  *
  * User feedback (verbatim, Hinglish, with a screenshot of the home-page
@@ -372,6 +408,35 @@ body {
   [data-theme="nova"] .oms-nav-tile[data-active="true"] {
     animation: none;
   }
+}
+
+/*
+ * 2026-09-09 — Clay signature effect: the sidebar and nav tiles get a
+ * soft embossed/pressed-in shadow, evoking the mockup's neumorphic
+ * dual-shadow technique (a warm dark shadow on one side, a light cream
+ * highlight on the other). No animation/keyframes here (unlike Nova) —
+ * the clay look is a static tactile shadow, not a pulse — so there's
+ * nothing to guard under prefers-reduced-motion beyond the existing
+ * hover/transition rules already covered further below.
+ */
+[data-theme="clay"] .oms-sidebar {
+  box-shadow: 8px 0 24px -10px rgba(122, 79, 42, 0.22);
+}
+
+[data-theme="clay"] .oms-nav-tile {
+  transition: box-shadow 200ms ease;
+}
+
+[data-theme="clay"] .oms-nav-tile[data-active="true"] {
+  box-shadow:
+    inset 3px 3px 7px rgba(122, 79, 42, 0.28),
+    inset -3px -3px 7px rgba(255, 250, 240, 0.75);
+}
+
+[data-theme="clay"] .oms-nav-tile:hover:not([data-active="true"]) {
+  box-shadow:
+    3px 3px 9px rgba(122, 79, 42, 0.16),
+    -2px -2px 7px rgba(255, 250, 240, 0.65);
 }
 
 @media (prefers-reduced-motion: reduce) {

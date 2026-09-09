@@ -44,9 +44,31 @@
 //   soft pulse on the active nav tile, both scoped to
 //   `[data-theme="nova"]` in globals.css so the other 5 themes are
 //   untouched.
-export type ThemeId = "navy-gold" | "day" | "eye-comfort" | "night" | "ocean" | "nova";
+// - clay: 7th theme, added 2026-09-09 — the "Claymorphism" look from the
+//   standalone UI mockup project, ported into this SAME theme system
+//   (see db/2026-09-09-clay-theme.sql) rather than rewriting any page.
+//   Warm cream canvas + a light warm-cream sidebar (not dark, unlike every
+//   other theme except Day) + a terracotta accent (#d97a4a), matching the
+//   mockup's own palette exactly. Its own "signature effect" (globals.css,
+//   "Clay signature effect" section) is a soft embossed/pressed-in shadow
+//   on the sidebar and the active nav tile — evoking the mockup's
+//   neumorphic dual-shadow technique — scoped to `[data-theme="clay"]` so
+//   the other 6 themes are untouched. Deliberately colors-plus-sidebar-
+//   effect only, NOT a full per-page rebuild (the mockup's rounded-corner/
+//   soft-shadow treatment on every individual card is hardcoded across 47+
+//   files app-wide, not driven by this shared token system — a much
+//   bigger, separate project if wanted later).
+export type ThemeId = "navy-gold" | "day" | "eye-comfort" | "night" | "ocean" | "nova" | "clay";
 
-export const THEME_IDS: ThemeId[] = ["navy-gold", "day", "eye-comfort", "night", "ocean", "nova"];
+export const THEME_IDS: ThemeId[] = [
+  "navy-gold",
+  "day",
+  "eye-comfort",
+  "night",
+  "ocean",
+  "nova",
+  "clay",
+];
 
 export const DEFAULT_THEME: ThemeId = "navy-gold";
 
@@ -94,6 +116,12 @@ export const THEME_META: Record<ThemeId, ThemeMeta> = {
     label: "Nova",
     description: "Deep near-black with an electric violet accent and an ambient glow effect — the boldest of the 6 looks.",
     swatch: { canvas: "#0a0a0c", sidebar: "#050506", accent: "#5e6ad2", surface: "#131318" },
+  },
+  clay: {
+    id: "clay",
+    label: "Clay",
+    description: "Warm cream tones with a terracotta accent and a soft embossed sidebar — from the Claymorphism UI mockup.",
+    swatch: { canvas: "#f6efe1", sidebar: "#fbf1e2", accent: "#d97a4a", surface: "#fffaf0" },
   },
 };
 
