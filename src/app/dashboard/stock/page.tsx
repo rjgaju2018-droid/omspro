@@ -158,9 +158,10 @@ export default async function StockPage({
     : { data: [] as { stock_out_id: string; order_id: string; orders: { ref_no: string } | null }[] };
   const linkedOrdersByStockOutId = new Map<string, { orderId: string; refNo: string }[]>();
   for (const link of orderLinks ?? []) {
-    if (!link.orders) continue;
+    const order = Array.isArray(link.orders) ? link.orders[0] : link.orders;
+    if (!order) continue;
     const list = linkedOrdersByStockOutId.get(link.stock_out_id) ?? [];
-    list.push({ orderId: link.order_id, refNo: link.orders.ref_no });
+    list.push({ orderId: link.order_id, refNo: order.ref_no });
     linkedOrdersByStockOutId.set(link.stock_out_id, list);
   }
 

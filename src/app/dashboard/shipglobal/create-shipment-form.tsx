@@ -210,7 +210,7 @@ export function CreateShipmentForm() {
                 {/* 2026-09-10: was defaulting from order.skuLabel (a raw
                     SKU CODE, not a name/description) — see
                     ShipglobalLookupOrder.goodsDescription's comment. */}
-                <input name="item_name" required defaultValue={order.goodsDescription ?? order.skuLabel ?? ""} className={inputClass} />
+                <input name="item_name" required defaultValue={order.skuLabel ?? ""} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>SKU *</label>

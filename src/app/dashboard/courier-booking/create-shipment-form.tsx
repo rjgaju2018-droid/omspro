@@ -290,7 +290,7 @@ function SharedShipmentFields({ order }: { order: CourierBookingLookupOrder }) {
                 description). Now defaults from order.goodsDescription
                 (Item Category name + Size, e.g. "Cotton T-Shirt, Size M")
                 — see CourierBookingLookupOrder's comment on that field. */}
-            <input name="goods_description" defaultValue={order.goodsDescription ?? order.skuLabel ?? ""} className={inputClass} />
+            <input name="goods_description" defaultValue={order.skuLabel ?? ""} className={inputClass} />
           </div>
           <div className="md:col-span-2">
             {/* 2026-09-10: "buyer ki tax id agr aati hai to vo kaha add
@@ -303,7 +303,7 @@ function SharedShipmentFields({ order }: { order: CourierBookingLookupOrder }) {
                 same as the rest of this FedEx client; other couriers don't
                 read this field today. */}
             <label className={labelClass}>Buyer Tax ID (VAT/EORI/IOSS, optional)</label>
-            <input name="recipient_tax_id" defaultValue={order.buyerTaxId ?? ""} className={inputClass} />
+            <input name="recipient_tax_id" defaultValue="" className={inputClass} />
           </div>
         </div>
       </div>

@@ -48,6 +48,8 @@ export default async function PartyLedgerReportPage({
   const toDate = typeof sp.to === "string" ? sp.to : "";
   const txnType = typeof sp.type === "string" ? sp.type : "";
 
+  type Payment = { id: string; bill_pass_register_id: string; amount: number; payment_date: string; payment_mode: string | null; reference_no: string | null };
+
   const [{ data: companies }, { data: parties }] = await Promise.all([
     supabase.from("companies").select("id, name").in("id", employee.companyIds).order("name"),
     supabase.from("parties").select("id, name").order("name"),
@@ -69,15 +71,15 @@ export default async function PartyLedgerReportPage({
   const { data: entriesRaw } = await query;
 
   const billIds = (entriesRaw ?? []).map((e) => e.id);
-  const { data: paymentsRaw } = billIds.length
+  const paymentsResponse = billIds.length
     ? await finSupabase
         .from("bill_pass_register_payments")
         .select("id, bill_pass_register_id, amount, payment_date, payment_mode, reference_no")
         .in("bill_pass_register_id", billIds)
         .order("payment_date", { ascending: true })
-    : { data: [] };
+    : { data: [] as Payment[] };
+  const paymentsRaw = (paymentsResponse.data ?? []) as Payment[];
 
-  type Payment = { id: string; bill_pass_register_id: string; amount: number; payment_date: string; payment_mode: string | null; reference_no: string | null };
   const paymentsByBill = new Map<string, Payment[]>();
   for (const p of paymentsRaw ?? []) {
     const list = paymentsByBill.get(p.bill_pass_register_id) ?? [];
@@ -115,7 +117,8 @@ export default async function PartyLedgerReportPage({
   for (const eg of groupBills(partyIdEntries)) {
     const first = eg.bills[0];
     const groupKey = `${first.company_id}__${first.party_id}`;
-    const group = groups.get(groupKey) ?? { companyId: first.company_id, partyId: first.party_id, txns: [] };
+    const group: { companyId: string; partyId: string; txns: Txn[] } =
+      groups.get(groupKey) ?? { companyId: first.company_id, partyId: first.party_id, txns: [] as Txn[] };
 
     const ref = first.vendor_invoice_no ?? first.invoice_no ?? "—";
     const label = sourceLabel[first.source ?? ""] ?? first.invoice_type ?? "Bill";
@@ -126,20 +129,20 @@ export default async function PartyLedgerReportPage({
     const itemsSuffix = eg.isGroup ? ` (${eg.bills.length} items)` : "";
 
     if (totalAmt !== 0) {
-      group.txns.push({ date: billDate, particulars: `${label} ${ref}${itemsSuffix}`, type: "Credit", debit: 0, credit: totalAmt, sortKey: `${billDate}_0` });
+      group.txns.push({ date: billDate, particulars: `${label} ${ref}${itemsSuffix}`, type: "Credit" as const, debit: 0, credit: totalAmt, sortKey: `${billDate}_0` });
     }
     if (creditNoteAmt > 0) {
-      group.txns.push({ date: billDate, particulars: `Credit Note against ${ref}`, type: "Debit", debit: creditNoteAmt, credit: 0, sortKey: `${billDate}_1` });
+      group.txns.push({ date: billDate, particulars: `Credit Note against ${ref}`, type: "Debit" as const, debit: creditNoteAmt, credit: 0, sortKey: `${billDate}_1` });
     }
     if (adjAmt > 0) {
-      group.txns.push({ date: billDate, particulars: `Debit/Credit Note adjustment against ${ref}`, type: "Debit", debit: adjAmt, credit: 0, sortKey: `${billDate}_1` });
+      group.txns.push({ date: billDate, particulars: `Debit/Credit Note adjustment against ${ref}`, type: "Debit" as const, debit: adjAmt, credit: 0, sortKey: `${billDate}_1` });
     }
     for (const b of eg.bills) {
       for (const p of paymentsByBill.get(b.id) ?? []) {
         group.txns.push({
           date: p.payment_date,
           particulars: `Payment against ${ref}${p.payment_mode ? ` (${p.payment_mode})` : ""}${p.reference_no ? ` · ${p.reference_no}` : ""}`,
-          type: "Debit",
+          type: "Debit" as const,
           debit: p.amount,
           credit: 0,
           sortKey: `${p.payment_date}_2`,

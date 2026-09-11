@@ -112,8 +112,8 @@ export default async function ReturnsPage({
   // company_id was added). `scopedCompanyIds` is either the one selected
   // company or every company this login can access.
   const orderRefunds = (orderRefundsRaw ?? []).filter(
-    (r) => r.orders && scopedCompanyIds.includes((r.orders as { company_id: string }).company_id)
-  ) as {
+    (r) => r.orders && scopedCompanyIds.includes((r.orders as unknown as { company_id: string }).company_id)
+  ) as unknown as {
     id: string;
     order_id: string;
     refund_amount: number;

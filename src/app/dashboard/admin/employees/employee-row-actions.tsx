@@ -24,14 +24,15 @@ export function EmployeeRowActions({
   currentStoreIds: string[];
   // 2026-09-11 (Payroll Phase 3) — same-company employees this one could
   // report to (self already excluded by the caller).
-  reportsToOptions: { id: string; name: string }[];
-  documents: EmployeeDocumentRow[];
+  reportsToOptions?: { id: string; name: string }[];
+  documents?: EmployeeDocumentRow[];
 }) {
   const [isPending, startTransition] = useTransition();
   const [resetOpen, setResetOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [storeAccessOpen, setStoreAccessOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
+  const employeeDocuments = documents ?? [];
 
   return (
     <div>
@@ -71,7 +72,7 @@ export function EmployeeRowActions({
           onClick={() => setDocumentsOpen((v) => !v)}
           className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 hover:bg-sky-100"
         >
-          Documents{documents.length > 0 ? ` (${documents.length})` : ""}
+          Documents{employeeDocuments.length > 0 ? ` (${employeeDocuments.length})` : ""}
         </button>
         <button
           type="button"
@@ -82,7 +83,7 @@ export function EmployeeRowActions({
         </button>
       </div>
       {resetOpen && <ResetPasswordInline employeeId={employeeId} onDone={() => setResetOpen(false)} />}
-      {detailsOpen && <EmployeeDetailsForm employee={details} reportsToOptions={reportsToOptions} onDone={() => setDetailsOpen(false)} />}
+      {detailsOpen && <EmployeeDetailsForm employee={details} reportsToOptions={reportsToOptions ?? []} onDone={() => setDetailsOpen(false)} />}
       {storeAccessOpen && (
         <EmployeeStoreAccessForm
           employeeId={employeeId}
@@ -92,7 +93,7 @@ export function EmployeeRowActions({
         />
       )}
       {documentsOpen && (
-        <EmployeeDocumentsPanel employeeId={employeeId} documents={documents} onDone={() => setDocumentsOpen(false)} />
+        <EmployeeDocumentsPanel employeeId={employeeId} documents={documents ?? []} onDone={() => setDocumentsOpen(false)} />
       )}
     </div>
   );
