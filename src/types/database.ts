@@ -495,6 +495,11 @@ export type Database = {
           master_invoice_prefix: string | null;
           weekly_off_days: unknown[];
           created_at: string;
+          plan: string;
+          trial_ends_at: string | null;
+          access_mode: "paid" | "free" | "suspended";
+          monthly_price_inr: number | null;
+          discount_percent: number;
         };
         Insert: {
           id?: string;
@@ -506,6 +511,11 @@ export type Database = {
           master_invoice_prefix?: string | null;
           weekly_off_days?: unknown[];
           created_at?: string;
+          plan?: string;
+          trial_ends_at?: string | null;
+          access_mode?: "paid" | "free" | "suspended";
+          monthly_price_inr?: number | null;
+          discount_percent?: number;
         };
         Update: {
           id?: string;
@@ -517,6 +527,11 @@ export type Database = {
           master_invoice_prefix?: string | null;
           weekly_off_days?: unknown[];
           created_at?: string;
+          plan?: string;
+          trial_ends_at?: string | null;
+          access_mode?: "paid" | "free" | "suspended";
+          monthly_price_inr?: number | null;
+          discount_percent?: number;
         };
         Relationships: [
         ];
@@ -624,6 +639,7 @@ export type Database = {
           remark: string | null;
           entered_by_employee_id: string | null;
           created_at: string;
+          is_platform_owner: boolean;
         };
         Insert: {
           id?: string;
@@ -640,6 +656,7 @@ export type Database = {
           remark?: string | null;
           entered_by_employee_id?: string | null;
           created_at?: string;
+          is_platform_owner?: boolean;
         };
         Update: {
           id?: string;
@@ -656,6 +673,7 @@ export type Database = {
           remark?: string | null;
           entered_by_employee_id?: string | null;
           created_at?: string;
+          is_platform_owner?: boolean;
         };
         Relationships: [
           {
