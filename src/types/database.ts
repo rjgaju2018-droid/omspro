@@ -7089,6 +7089,17 @@ export type Database = {
       };
     };
     Functions: {
+      // 2026-09-12 — hand-added ahead of the next full regeneration (same
+      // precedent as the payments stubs): queue_companion_celebrations()
+      // comes from db/2026-09-12-virtual-assistant.sql. Remove this stub if
+      // scripts/gen-types.mjs is re-run against a DB that has the migration
+      // applied — the generator will emit the identical shape.
+      queue_companion_celebrations: {
+        Args: {
+          p_events: Json;
+        };
+        Returns: undefined;
+      };
       trial_status: {
         Args: {
           p_company_id: string;

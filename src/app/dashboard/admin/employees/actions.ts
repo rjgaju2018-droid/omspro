@@ -10,6 +10,7 @@
 // employees.
 import { requireCapability } from "@/lib/auth/require-capability";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { notifyCompanion } from "@/lib/companion/notify";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
 
@@ -175,6 +176,16 @@ export async function createEmployee(_prev: EmployeeFormState, formData: FormDat
   }
 
   revalidatePath("/dashboard/admin/employees");
+  // 2026-09-12 — "naya employee ki id generate hogi vo dance karegi or
+  // bolegi ab to party to banti hai": the new login gets their own welcome
+  // dance the first time they land on the dashboard. (Their colleagues get
+  // one too, via the DB trigger in db/2026-09-12-virtual-assistant.sql.)
+  // Never blocks the create response — same pattern as notifyCompanion().
+  await notifyCompanion(supabase, {
+    employeeId: employee.id,
+    eventType: "new_employee",
+    message: `Welcome to the team, ${name}! Your ID is ready — ab to party to banti hai! 🎉`,
+  });
   return { error: null, success: { email } };
 }
 

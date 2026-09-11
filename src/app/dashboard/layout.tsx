@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { CelebrationProvider } from "@/components/celebration/celebration-context";
 import { TodaysCelebrationsBanner } from "@/components/celebration/todays-celebrations-banner";
 import { getTodaysCelebrations } from "@/lib/celebration/today";
+import { queueCelebrationDances } from "@/lib/companion/celebrate";
 import { HelpCenterProvider } from "@/components/help-center/help-center-provider";
 import { getHelpArticles } from "@/lib/help-center/get-articles";
 import { PresenceProvider } from "@/components/presence/presence-context";
@@ -69,6 +70,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // enough to run on every dashboard page load, unlike a full reorder-
   // alert-style computation would be.
   const bprClient = createServiceRoleClient();
+  // 2026-09-12 — Virtual Assistant dance: queue one companion event per
+  // today's birthday/anniversary (fanned out to the whole company by the
+  // SQL function, de-duped per day server-side). Fire-and-forget — never
+  // blocks or fails the render.
+  void queueCelebrationDances(bprClient, celebrations);
   const [
     helpArticles,
     { count: unreadMessageCount },
@@ -231,32 +237,28 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             initialDirectUnread={unreadMessageCount ?? 0}
             initialGroupUnread={typeof unreadGroupMessageCount === "number" ? unreadGroupMessageCount : 0}
           />
-          {/* 2026-09-05 — AI Companion, live. Only mounted (subscribes to
-              nothing, renders nothing) for employees an Admin/MD has
-              explicitly turned on via /dashboard/admin/companion-access —
-              everyone else pays zero cost for this feature existing. */}
-          {myThemePrefs?.companion_enabled ? (
+          {/* 2026-09-05 — AI Companion, live. Mounted for every employee
+              since the 2026-09-12 "Virtual Assistant" upgrade (the
+              companion_enabled default flipped to true and every existing
+              employee row was switched on in
+              db/2026-09-12-virtual-assistant.sql) — an Admin can still turn
+              it off per employee via /dashboard/admin/companion-access. */}
+          {myThemePrefs?.companion_enabled !== false ? (
             <CompanionLiveProvider
               employeeId={employee.id}
               employeeName={employee.name}
               companionName={myThemePrefs?.companion_name ?? null}
-              // Cache-busted with the row's own generated_at so a fresh
-              // regeneration (same public URL, upsert: true) is picked up
-              // immediately instead of every browser's cached copy of the
-              // old image sticking around.
-              //
-              // 2026-09-09 — "STATIC FALLBACK IMAGE ADD KARO": until an
-              // Admin/MD generates a real photo via /dashboard/admin/
-              // companion-access, every employee used to see the hand-drawn
-              // SVG mascot. Now they see this bundled reference-art image
-              // instead — same character the claymock UI mockup's own
-              // companion widget uses — with the DB-generated Gemini photo
-              // still taking priority the moment one exists (unchanged
-              // precedence, this only replaces the innermost `null`).
+              // 2026-09-12 — the old bundled robot fallback PNG is gone:
+              // when no DB-generated photo exists (the normal case) we pass
+              // null so CompanionCharacter renders the hand-drawn Virtual
+              // Assistant SVG — the outfits/dance/makeup redesign — instead
+              // of a static picture that ignores every state change. A real
+              // generated photo still wins when one exists (unchanged
+              // precedence), cache-busted with its generated_at.
               companionImageUrl={
                 companionCharacterImage?.image_url
                   ? `${companionCharacterImage.image_url}?v=${encodeURIComponent(companionCharacterImage.generated_at)}`
-                  : "/companion/character-fallback.png"
+                  : null
               }
             />
           ) : null}

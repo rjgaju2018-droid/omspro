@@ -699,6 +699,38 @@ body {
   animation: oms-companion-bob-neutral 2.8s ease-in-out infinite;
 }
 
+/* 2026-09-12 — the celebration dance: a jaunty whole-body hip sway (Bollywood
+   style), faster than every other pose, plus floating music notes from
+   renderFrontDecor. */
+[data-companion-state="dance"] .oms-companion-body-group {
+  animation: oms-companion-dance-party 0.55s ease-in-out infinite;
+}
+[data-companion-state="dance"] .oms-companion-arm {
+  animation: oms-companion-dance-arms 0.55s ease-in-out infinite;
+}
+[data-companion-state="dance"] .oms-companion-photo {
+  animation: oms-companion-dance-party 0.55s ease-in-out infinite;
+}
+.oms-companion-note {
+  animation: oms-companion-note-float 1.6s ease-in infinite;
+}
+
+@keyframes oms-companion-dance-party {
+  0%, 100% { transform: rotate(-6deg) translateY(0); }
+  25% { transform: rotate(0deg) translateY(-7px); }
+  50% { transform: rotate(6deg) translateY(0); }
+  75% { transform: rotate(0deg) translateY(-7px); }
+}
+@keyframes oms-companion-dance-arms {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-18deg); }
+}
+@keyframes oms-companion-note-float {
+  0% { transform: translateY(0); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(-24px) rotate(12deg); opacity: 0; }
+}
+
 @keyframes oms-companion-bounce-happy {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-16px); }
@@ -768,7 +800,8 @@ body {
   .oms-companion-sweat,
   .oms-companion-alert,
   .oms-companion-rays line,
-  .oms-companion-zzz {
+  .oms-companion-zzz,
+  .oms-companion-note {
     animation: none;
     transition: none;
   }
@@ -956,5 +989,74 @@ body {
   }
   .oms-companion-photo {
     animation: none !important;
+  }
+}
+
+/* ===========================================================================
+   2026-09-12 — tablet + mobile polish for the post-login shell. The
+   fixed-width 288px (w-72) sidebar ate most of a 768px tablet screen;
+   below 1024px it becomes a fixed overlay drawer (opened/closed from the
+   header toggle), and below 640px the companion/assistant widgets shrink
+   so they never cover more than ~1/3 of a phone screen.
+   =========================================================================== */
+@media (max-width: 1024px) {
+  .oms-sidebar {
+    /* Overlay the content instead of squeezing it: keeps order tables etc.
+       usable on a tablet. The header's own toggle still opens/closes it. */
+    position: fixed;
+    inset-block: 0;
+    left: 0;
+    z-index: 55;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.35);
+    /* 2026-09-12 — slides in/out from the left when the header's ☰ toggle
+       (mobile-menu-toggle.tsx) flips body[data-nav-open]. Starts hidden
+       below 1024px so the drawer never covers content uninvited; desktop
+       keeps the always-visible layout. */
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+  body[data-nav-open="true"] .oms-sidebar {
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .oms-companion-dock {
+    width: 52px;
+    height: 52px;
+    right: 12px;
+    bottom: 12px;
+  }
+  .oms-companion-event-figure {
+    width: 64px;
+    height: 76px;
+  }
+  .oms-companion-bubble {
+    max-width: 150px;
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+  .oms-companion-chat-panel {
+    right: 8px;
+    bottom: 72px;
+    width: min(300px, calc(100vw - 16px));
+    height: min(420px, calc(100vh - 120px));
+  }
+  /* 2026-09-12 — phone polish: tighter header, smaller page gutters so
+     tables/cards get every pixel back; header keeps its height so nothing
+     below jumps when rotating the device. */
+  main {
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .oms-companion-event {
+    /* On a ~360px phone a bottom-edge entry with a 64px figure + 150px
+       bubble side by side overflows — stack them instead. */
+    flex-direction: column !important;
+    align-items: flex-start;
+    gap: 6px;
+    max-width: calc(100vw - 24px);
   }
 }

@@ -10,6 +10,7 @@ import {
   DEFAULT_OUTFIT,
   DEFAULT_HAIR,
   DEFAULT_GLASSES,
+  makeupForDate,
   type CompanionStateId,
   type OutfitId,
   type HairId,
@@ -72,7 +73,7 @@ export function CompanionPreviewClient() {
           }
         >
           <div className="flex h-64 w-64 items-center justify-center sm:h-72 sm:w-72">
-            <CompanionCharacter state={stateId} outfit={outfit} hair={hair} glasses={glasses} className="h-full w-full" />
+            <CompanionCharacter state={stateId} outfit={outfit} hair={hair} glasses={glasses} makeup={makeupForDate()} className="h-full w-full" />
           </div>
           <div className="text-center">
             <p className="text-base font-semibold text-[var(--oms-text)]">{active.label}</p>
@@ -136,7 +137,7 @@ export function CompanionPreviewClient() {
                   title={o.label}
                   className="flex h-10 w-10 items-center justify-center rounded-full border-2 transition-transform"
                   style={{
-                    background: o.vestColor,
+                    background: o.primary,
                     borderColor: outfit === o.id ? "var(--oms-text)" : "transparent",
                     transform: outfit === o.id ? "scale(1.08)" : "scale(1)",
                   }}

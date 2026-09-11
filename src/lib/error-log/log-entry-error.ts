@@ -11,6 +11,7 @@
 // layering a non-blocking side-effect log onto an event that already
 // happened.
 import type { createServiceRoleClient } from "@/lib/supabase/server";
+import { notifyCompanion } from "@/lib/companion/notify";
 
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
 
@@ -46,5 +47,17 @@ export async function logEntryError(supabase: ServiceClient, params: LogEntryErr
   } catch {
     // Never let a logging failure break the real validation response/
     // booking error it's describing.
+  }
+
+  // 2026-09-12 — "oms me kuch bhi ... error aaya ho" — the Virtual
+  // Assistant reacts (concerned mood) for whoever raised this error. Same
+  // never-block rule as the insert above; every error path in the app
+  // funnels through here, so this one call covers them all.
+  if (params.raisedByEmployeeId) {
+    await notifyCompanion(supabase, {
+      employeeId: params.raisedByEmployeeId,
+      eventType: "error",
+      message: `Something needs attention: ${params.referenceLabel ? `${params.referenceLabel} — ` : ""}${params.reason}`,
+    });
   }
 }

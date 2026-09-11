@@ -116,8 +116,14 @@ export const CAPABILITY_INFO: CapabilityInfo[] = [
   // db/2026-08-24-automation-rules.sql.
   { code: "audit_log_view", label: "Audit Log", icon: "🕵️", href: "/dashboard/admin/audit-log",
     description: "Who changed or deleted what, and when — order status changes, bill/expense/shipment deletions." },
-  { code: "automation_admin", label: "Automation Rules", icon: "🤖", href: "/dashboard/admin/automation",
-    description: "Trigger → condition → action rules that run automatically on order status changes (internal-only actions, no customer messaging)." },
+  // 2026-09-12 — "automation rules vali jagh par virtual assistance chahiye":
+  // the Automation Rules entry was replaced by the Virtual Assistant's own
+  // manage screen (/dashboard/companion-preview — the wardrobe + simulate
+  // playground, reachable by the same admin audience). The old automation
+  // page itself is untouched at /dashboard/admin/automation — direct URL
+  // only, no nav entry.
+  { code: "automation_admin", label: "Virtual Assistant", icon: "🧚", href: "/dashboard/companion-preview",
+    description: "Your OMS Pro Virtual Assistant — wardrobe, moods, dance and her daily outfit, plus who she pops up for (AI Companion access)." },
   // 2026-09-05: AI Companion — finalized from the companion-preview mockup.
   // Per-EMPLOYEE toggle (employees.companion_enabled), not a role grant —
   // this capability only gates who may SEE/USE this admin screen, same

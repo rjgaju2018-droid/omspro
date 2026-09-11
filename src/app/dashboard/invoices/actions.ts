@@ -2,6 +2,7 @@
 
 import { requireCapability, type AuthedEmployee } from "@/lib/auth/require-capability";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { notifyCompanion } from "@/lib/companion/notify";
 import { originDeclarationFor } from "@/lib/invoices/origin-declaration";
 import { computeDepartmentReferenceNo, isFedEx } from "@/lib/invoices/department-reference";
 import { computeValueBreakdown } from "@/lib/invoices/value-breakdown";
@@ -462,6 +463,13 @@ export async function generateInvoice(_prev: InvoiceFormState, formData: FormDat
   });
 
   if (result.error || !result.invoice) return { error: result.error, success: null };
+  // 2026-09-12 — "data save hua ho" — the Virtual Assistant celebrates the
+  // fresh invoice with whoever generated it. Never blocks the response.
+  await notifyCompanion(supabase, {
+    employeeId: employee.id,
+    eventType: "data_saved",
+    message: `Invoice ${result.invoice.invoice_no ?? ""} generated. 🎉`,
+  });
   return { error: null, success: { invoiceId: result.invoice.id, invoiceNo: result.invoice.invoice_no } };
 }
 

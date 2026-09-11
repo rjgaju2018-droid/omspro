@@ -28,12 +28,20 @@ import { CompanionCharacter } from "./companion-character";
 import { CompanionChatPanel } from "./companion-chat-panel";
 import {
   EVENT_TYPE_TO_MOOD,
-  DEFAULT_OUTFIT,
   DEFAULT_HAIR,
   DEFAULT_GLASSES,
   COMPANION_STATES,
+  outfitForDate,
+  makeupForDate,
   type CompanionEventType,
 } from "./companion-config";
+
+// 2026-09-12 — "24 me 24 baar nye outfit me aayegi": the outfit + makeup
+// look are pure functions of today's date (see companion-config.ts), so
+// they rotate automatically at midnight with nothing to schedule. Both are
+// computed once on mount and rolled forward by the minute-timer below if
+// the dashboard stays open across midnight.
+const TODAY_KEY = new Date().toDateString();
 
 type QueuedEvent = { id: string; eventType: CompanionEventType; message: string };
 type Edge = "top" | "bottom" | "left" | "right";
@@ -97,6 +105,8 @@ export function CompanionLiveProvider({
   const [visible, setVisible] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [name, setName] = useState(companionName);
+  const [outfit, setOutfit] = useState(() => outfitForDate());
+  const [makeup, setMakeup] = useState(() => makeupForDate());
   // Lazy initializer (not an effect) so this never needs a synchronous
   // setState-in-effect on mount — only the "it changed later" case below
   // needs an effect at all, and that one only calls setState from inside
@@ -121,6 +131,18 @@ export function CompanionLiveProvider({
     const handler = () => setReducedMotion(mq.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Rolls the daily outfit/makeup forward the moment the calendar day
+  // changes while the tab stays open (e.g. dashboard left open overnight)
+  // — no reload needed.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (new Date().toDateString() === TODAY_KEY) return;
+      setOutfit(outfitForDate());
+      setMakeup(makeupForDate());
+    }, 60_000);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -179,9 +201,10 @@ export function CompanionLiveProvider({
           <div className="oms-companion-event-figure" style={{ "--companion-aura": dockAura } as CSSProperties}>
             <CompanionCharacter
               state={EVENT_TYPE_TO_MOOD[active.eventType]}
-              outfit={DEFAULT_OUTFIT}
+              outfit={outfit}
               hair={DEFAULT_HAIR}
               glasses={DEFAULT_GLASSES}
+              makeup={makeup}
               imageUrl={companionImageUrl}
               className="h-full w-full"
             />
@@ -198,10 +221,11 @@ export function CompanionLiveProvider({
         style={{ "--companion-aura": dockAura } as CSSProperties}
       >
         <CompanionCharacter
-          state="focused"
-          outfit={DEFAULT_OUTFIT}
+          state={chatOpen ? "dance" : "focused"}
+          outfit={outfit}
           hair={DEFAULT_HAIR}
           glasses={DEFAULT_GLASSES}
+          makeup={makeup}
           imageUrl={companionImageUrl}
           className="h-full w-full"
         />

@@ -34,6 +34,7 @@
 
 import { requireCapability, type AuthedEmployee } from "@/lib/auth/require-capability";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { notifyCompanion } from "@/lib/companion/notify";
 import { parseSizeToSqFt } from "@/lib/size-parser";
 import { resyncDispatchSummary } from "@/lib/order-packages/resync-dispatch-summary";
 import { logAudit } from "@/lib/audit/log-audit";
@@ -279,6 +280,13 @@ export async function saveCreditNote(_prev: DocFormState, formData: FormData): P
   });
 
   if (result.error) return initialFail(result.error);
+  // 2026-09-12 — "data save hua ho" — the Virtual Assistant nods for the
+  // person who just saved. Same never-block pattern as notifyCompanion().
+  await notifyCompanion(supabase, {
+    employeeId: employee.id,
+    eventType: "data_saved",
+    message: `Credit Note ${result.docNo ?? ""} saved. ✅`,
+  });
   revalidatePath("/dashboard/documents");
   revalidatePath("/dashboard/bill-payment");
   revalidatePath("/dashboard/approvals/l1");
@@ -657,6 +665,13 @@ export async function saveDebitNote(_prev: DocFormState, formData: FormData): Pr
   });
 
   if (result.error) return initialFail(result.error);
+  // 2026-09-12 — "data save hua ho" — the Virtual Assistant nods for the
+  // person who just saved. Same never-block pattern as notifyCompanion().
+  await notifyCompanion(supabase, {
+    employeeId: employee.id,
+    eventType: "data_saved",
+    message: `Debit Note ${result.docNo ?? ""} saved. ✅`,
+  });
   revalidatePath("/dashboard/documents");
   revalidatePath("/dashboard/bill-payment");
   revalidatePath("/dashboard/approvals/l1");
@@ -1190,6 +1205,12 @@ export async function savePurchaseBill(_prev: DocFormState, formData: FormData):
   });
 
   if (result.error) return initialFail(result.error);
+  // 2026-09-12 — "data save hua ho" — assistant nod for the saver.
+  await notifyCompanion(supabase, {
+    employeeId: employee.id,
+    eventType: "data_saved",
+    message: `Purchase Bill ${result.docNo ?? ""} saved. ✅`,
+  });
   revalidatePath("/dashboard/documents");
   return { error: null, success: { id: result.id!, docNo: result.docNo ?? "" } };
 }

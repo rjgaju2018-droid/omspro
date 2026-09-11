@@ -355,6 +355,14 @@ CREATE TABLE employees (
   theme_id                text,
   custom_accent_color     text,
 
+  -- 2026-09-05: per-employee AI Companion toggle (see
+  -- db/2026-09-05-ai-companion-live.sql) — flipped to DEFAULT true and
+  -- backfilled to true for every existing employee on 2026-09-12 (see
+  -- db/2026-09-12-virtual-assistant.sql) when the Virtual Assistant became
+  -- the always-on OMS guide.
+  companion_enabled       boolean NOT NULL DEFAULT true,
+  companion_name          text,
+
   created_at      timestamptz NOT NULL DEFAULT now(),
   UNIQUE (company_id, name)              -- matches old verifyCredentials_()'s (company, name) lookup key
 );
