@@ -3111,6 +3111,25 @@ CREATE TABLE ebay_monthly_financial_statement (
 -- SECTION 16 — HR: ATTENDANCE, HR LETTERS
 -- =============================================================================
 
+-- Leave types must be declared before attendance/leave_requests reference
+-- leave_types(id) below. PostgreSQL does not allow forward table references.
+CREATE TABLE leave_types (
+  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id            uuid NOT NULL REFERENCES companies(id),
+  name                  text NOT NULL,
+  code                  text,
+  paid                  boolean NOT NULL DEFAULT true,
+  annual_accrual_days   numeric(5,1) NOT NULL DEFAULT 0,
+  accrual_frequency     text NOT NULL DEFAULT 'Monthly' CHECK (accrual_frequency IN ('Monthly', 'Upfront')),
+  carry_forward_cap     numeric(5,1),
+  active                boolean NOT NULL DEFAULT true,
+  created_at            timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (company_id, name)
+);
+COMMENT ON TABLE leave_types IS
+  'Real leave categories, admin-configurable per company from /dashboard/leave/admin. A company with zero rows '
+  'here keeps the original single-pool leave behavior (employee_salary.allowed_leaves_per_month) unchanged.';
+
 -- Old sheet: Attendance — one row per person per day, from either the web
 -- app's own Punch In/Punch Out (a backup for the physical biometric device)
 -- or an imported TeamOffice monthly report. WORK HOURS is genuinely
@@ -3730,23 +3749,6 @@ COMMENT ON TABLE leave_coverage_assignments IS
 -- request (leave_type_id IS NULL, both here and on leave_requests) behaves
 -- EXACTLY as before this round.
 -- =============================================================================
-CREATE TABLE leave_types (
-  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id            uuid NOT NULL REFERENCES companies(id),
-  name                  text NOT NULL,
-  code                  text,
-  paid                  boolean NOT NULL DEFAULT true,
-  annual_accrual_days   numeric(5,1) NOT NULL DEFAULT 0,
-  accrual_frequency     text NOT NULL DEFAULT 'Monthly' CHECK (accrual_frequency IN ('Monthly', 'Upfront')),
-  carry_forward_cap     numeric(5,1),
-  active                boolean NOT NULL DEFAULT true,
-  created_at            timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (company_id, name)
-);
-COMMENT ON TABLE leave_types IS
-  'Real leave categories, admin-configurable per company from /dashboard/leave/admin. A company with zero rows '
-  'here keeps the original single-pool leave behavior (employee_salary.allowed_leaves_per_month) unchanged.';
-
 CREATE TABLE leave_balance_adjustments (
   id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id             uuid NOT NULL REFERENCES employees(id),
