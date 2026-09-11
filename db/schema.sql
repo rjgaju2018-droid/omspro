@@ -368,6 +368,11 @@ CREATE TABLE employees (
   bank_ifsc                  text,
   bank_name                  text,
 
+  -- 2026-09-11: Payroll Phase 3 — org chart (see
+  -- db/2026-09-11-core-hr-onboarding-orgchart-documents.sql). NULL = shown
+  -- as a top-level node on /dashboard/admin/employees/org-chart.
+  reports_to_employee_id     uuid REFERENCES employees(id),
+
   created_at      timestamptz NOT NULL DEFAULT now(),
   UNIQUE (company_id, name)              -- matches old verifyCredentials_()'s (company, name) lookup key
 );
@@ -3134,9 +3139,115 @@ CREATE TABLE attendance (
   remark                                             text,
   entered_by_employee_id                               uuid REFERENCES employees(id),
   entered_on                                             timestamptz NOT NULL DEFAULT now(),
+  -- 2026-09-11 (Payroll Phase 2) — see db/2026-09-11-leave-types-and-balances.sql.
+  leave_type_id                                          uuid REFERENCES leave_types(id),
+  leave_unpaid                                           boolean NOT NULL DEFAULT false,
   UNIQUE (employee_id, attendance_date)
 );
 CREATE INDEX idx_attendance_company_date ON attendance(company_id, attendance_date);
+
+-- =============================================================================
+-- SECTION 16-c (2026-09-11, Payroll Phase 3) — Onboarding Checklist +
+-- Employee Documents. See db/2026-09-11-core-hr-onboarding-orgchart-
+-- documents.sql for the full migration. Gated the same as the rest of
+-- /dashboard/admin/employees — requireCapability("employee_admin"), no new
+-- capability added. employees.reports_to_employee_id (org chart) is
+-- declared on the employees table itself, above.
+-- =============================================================================
+CREATE TABLE onboarding_checklist_items (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id  uuid NOT NULL REFERENCES companies(id),
+  title       text NOT NULL,
+  sort_order  int NOT NULL DEFAULT 0,
+  active      boolean NOT NULL DEFAULT true,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (company_id, title)
+);
+COMMENT ON TABLE onboarding_checklist_items IS
+  'Per-company onboarding checklist TEMPLATE — admin-configurable. See employee_onboarding_progress for '
+  'who has actually completed which step.';
+
+CREATE TABLE employee_onboarding_progress (
+  employee_id             uuid NOT NULL REFERENCES employees(id),
+  checklist_item_id       uuid NOT NULL REFERENCES onboarding_checklist_items(id),
+  completed_at            timestamptz,
+  completed_by_employee_id uuid REFERENCES employees(id),
+  notes                   text,
+  PRIMARY KEY (employee_id, checklist_item_id)
+);
+COMMENT ON TABLE employee_onboarding_progress IS
+  'One row per (employee, checklist item) once first touched. No row = not yet done, same "absence '
+  'derives the default" convention attendance itself uses.';
+
+CREATE TABLE employee_documents (
+  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_id             uuid NOT NULL REFERENCES employees(id),
+  company_id              uuid NOT NULL REFERENCES companies(id),
+  doc_type                text NOT NULL,
+  file_name               text NOT NULL,
+  storage_path            text NOT NULL,
+  mime_type               text,
+  file_size               bigint,
+  notes                   text,
+  uploaded_by_employee_id uuid REFERENCES employees(id),
+  uploaded_at             timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_employee_documents_employee ON employee_documents(employee_id, uploaded_at DESC);
+COMMENT ON TABLE employee_documents IS
+  'ID proofs, certificates, signed letters, etc. Files live in the PRIVATE "employee-documents" Storage '
+  'bucket — served only through /api/employee-document/[id], never a public/signed URL.';
+
+-- =============================================================================
+-- SECTION 16-d (2026-09-11, Payroll Phase 4 — final phase) — Full & Final
+-- (FnF) Settlement. See db/2026-09-11-fnf-settlement.sql for the full
+-- migration and src/lib/attendance/settlement.ts for the reference math
+-- (notice shortfall, gratuity estimate). Deliberately NOT fully automated —
+-- every actual rupee is a line item the admin adds, see
+-- employee_settlement_line_items' own comment.
+-- =============================================================================
+CREATE TABLE employee_settlements (
+  id                          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_id                 uuid NOT NULL REFERENCES employees(id),
+  company_id                  uuid NOT NULL REFERENCES companies(id),
+  separation_type             text NOT NULL CHECK (separation_type IN ('Resignation', 'Termination')),
+  resignation_date            date NOT NULL,
+  last_working_day            date NOT NULL,
+  reason                      text,
+  notice_period_required_days int NOT NULL DEFAULT 0,
+  notice_period_served_days   int NOT NULL DEFAULT 0,
+  status                      text NOT NULL DEFAULT 'Draft' CHECK (status IN ('Draft', 'Finalized', 'Paid')),
+  initiated_by_employee_id    uuid REFERENCES employees(id),
+  initiated_at                timestamptz NOT NULL DEFAULT now(),
+  finalized_by_employee_id    uuid REFERENCES employees(id),
+  finalized_at                timestamptz,
+  payment_date                date,
+  paid_by_employee_id         uuid REFERENCES employees(id),
+  remark                      text,
+  created_at                  timestamptz NOT NULL DEFAULT now(),
+  CHECK (last_working_day >= resignation_date)
+);
+CREATE INDEX idx_employee_settlements_employee ON employee_settlements(employee_id, created_at DESC);
+CREATE INDEX idx_employee_settlements_company_status ON employee_settlements(company_id, status);
+CREATE UNIQUE INDEX idx_employee_settlements_one_active ON employee_settlements(employee_id) WHERE status != 'Paid';
+COMMENT ON TABLE employee_settlements IS
+  'One Full & Final settlement per resignation/termination. The actual rupee amounts live entirely in '
+  'employee_settlement_line_items below — this row is the case/status wrapper, never a computed total.';
+
+CREATE TABLE employee_settlement_line_items (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  settlement_id  uuid NOT NULL REFERENCES employee_settlements(id),
+  kind           text NOT NULL CHECK (kind IN ('Addition', 'Deduction')),
+  category       text NOT NULL,
+  description    text,
+  amount         numeric(12,2) NOT NULL CHECK (amount > 0),
+  added_by_employee_id uuid REFERENCES employees(id),
+  created_at     timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_employee_settlement_line_items_settlement ON employee_settlement_line_items(settlement_id);
+COMMENT ON TABLE employee_settlement_line_items IS
+  'Every rupee on a settlement is an explicit line item the admin added. Net settlement = SUM(Addition) − '
+  'SUM(Deduction), always computed live, never stored on employee_settlements. Only editable while the '
+  'parent settlement is status=''Draft'' — enforced in the server action, not the DB.';
 
 -- Old sheet: Letter Log — audit trail of every HR letter generated (the
 -- letter document itself is rendered client-side from a template, never
@@ -3572,6 +3683,9 @@ CREATE TABLE leave_requests (
   decided_at              timestamptz,
   decision_remark         text,
   created_at              timestamptz NOT NULL DEFAULT now(),
+  -- 2026-09-11 (Payroll Phase 2) — see db/2026-09-11-leave-types-and-balances.sql.
+  -- NULL = untyped request, original behavior unchanged (flat monthly allowance).
+  leave_type_id           uuid REFERENCES leave_types(id),
   CHECK (to_date >= from_date)
 );
 CREATE INDEX idx_leave_requests_employee ON leave_requests(employee_id, from_date DESC);
@@ -3607,6 +3721,48 @@ CREATE INDEX idx_leave_coverage_leave_request ON leave_coverage_assignments(leav
 CREATE INDEX idx_leave_coverage_covering_employee ON leave_coverage_assignments(covering_employee_id, from_date, to_date);
 COMMENT ON TABLE leave_coverage_assignments IS
   'Not unique per leave_request — MD/Admin can split coverage across multiple people/stores for one leave.';
+
+-- =============================================================================
+-- SECTION 16a-2 (2026-09-11, Payroll Phase 2) — Leave Types + Real Balances
+-- See db/2026-09-11-leave-types-and-balances.sql for the full migration and
+-- src/lib/attendance/leave-balance.ts for the accrual/balance math. Purely
+-- additive on top of the leave_requests workflow above — an untyped
+-- request (leave_type_id IS NULL, both here and on leave_requests) behaves
+-- EXACTLY as before this round.
+-- =============================================================================
+CREATE TABLE leave_types (
+  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id            uuid NOT NULL REFERENCES companies(id),
+  name                  text NOT NULL,
+  code                  text,
+  paid                  boolean NOT NULL DEFAULT true,
+  annual_accrual_days   numeric(5,1) NOT NULL DEFAULT 0,
+  accrual_frequency     text NOT NULL DEFAULT 'Monthly' CHECK (accrual_frequency IN ('Monthly', 'Upfront')),
+  carry_forward_cap     numeric(5,1),
+  active                boolean NOT NULL DEFAULT true,
+  created_at            timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (company_id, name)
+);
+COMMENT ON TABLE leave_types IS
+  'Real leave categories, admin-configurable per company from /dashboard/leave/admin. A company with zero rows '
+  'here keeps the original single-pool leave behavior (employee_salary.allowed_leaves_per_month) unchanged.';
+
+CREATE TABLE leave_balance_adjustments (
+  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_id             uuid NOT NULL REFERENCES employees(id),
+  leave_type_id           uuid NOT NULL REFERENCES leave_types(id),
+  leave_year              int NOT NULL,
+  adjustment_days         numeric(5,1) NOT NULL,
+  reason                  text,
+  entered_by_employee_id  uuid REFERENCES employees(id),
+  created_at              timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_leave_balance_adjustments_employee ON leave_balance_adjustments(employee_id, leave_type_id, leave_year);
+COMMENT ON TABLE leave_balance_adjustments IS
+  'Ledger of manual balance corrections (opening/carry-forward balances, one-off grants, mistakes fixed). The '
+  'live balance for (employee, leave_type, leave_year) is: SUM(adjustment_days here) + accrued-to-date (computed '
+  'live from leave_types.annual_accrual_days/accrual_frequency, see src/lib/attendance/leave-balance.ts) minus '
+  'approved Leave days of that type this year (counted from attendance, not stored anywhere separately).';
 
 
 -- =============================================================================
