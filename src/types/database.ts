@@ -90,6 +90,8 @@ export type Database = {
           remark: string | null;
           entered_by_employee_id: string | null;
           entered_on: string;
+          leave_type_id: string | null;
+          leave_unpaid: boolean;
         };
         Insert: {
           id?: string;
@@ -109,6 +111,8 @@ export type Database = {
           remark?: string | null;
           entered_by_employee_id?: string | null;
           entered_on?: string;
+          leave_type_id?: string | null;
+          leave_unpaid?: boolean;
         };
         Update: {
           id?: string;
@@ -128,6 +132,8 @@ export type Database = {
           remark?: string | null;
           entered_by_employee_id?: string | null;
           entered_on?: string;
+          leave_type_id?: string | null;
+          leave_unpaid?: boolean;
         };
         Relationships: [
           {
@@ -156,6 +162,13 @@ export type Database = {
             columns: ["entered_by_employee_id"];
             isOneToOne: false;
             referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "attendance_leave_type_id_fkey";
+            columns: ["leave_type_id"];
+            isOneToOne: false;
+            referencedRelation: "leave_types";
             referencedColumns: ["id"];
           },
         ];
@@ -481,12 +494,12 @@ export type Database = {
           logo_url: string | null;
           master_invoice_prefix: string | null;
           weekly_off_days: unknown[];
-          // 2026-09-09 — OMS Pro SaaS trial/plan columns
-          // (db/2026-09-09-omspro-saas-signup.sql).
+          created_at: string;
           plan: string;
           trial_ends_at: string | null;
-          created_by_signup: boolean;
-          created_at: string;
+          access_mode: "paid" | "free" | "suspended";
+          monthly_price_inr: number | null;
+          discount_percent: number;
         };
         Insert: {
           id?: string;
@@ -497,10 +510,12 @@ export type Database = {
           logo_url?: string | null;
           master_invoice_prefix?: string | null;
           weekly_off_days?: unknown[];
+          created_at?: string;
           plan?: string;
           trial_ends_at?: string | null;
-          created_by_signup?: boolean;
-          created_at?: string;
+          access_mode?: "paid" | "free" | "suspended";
+          monthly_price_inr?: number | null;
+          discount_percent?: number;
         };
         Update: {
           id?: string;
@@ -511,10 +526,12 @@ export type Database = {
           logo_url?: string | null;
           master_invoice_prefix?: string | null;
           weekly_off_days?: unknown[];
+          created_at?: string;
           plan?: string;
           trial_ends_at?: string | null;
-          created_by_signup?: boolean;
-          created_at?: string;
+          access_mode?: "paid" | "free" | "suspended";
+          monthly_price_inr?: number | null;
+          discount_percent?: number;
         };
         Relationships: [
         ];
@@ -622,6 +639,7 @@ export type Database = {
           remark: string | null;
           entered_by_employee_id: string | null;
           created_at: string;
+          is_platform_owner: boolean;
         };
         Insert: {
           id?: string;
@@ -638,6 +656,7 @@ export type Database = {
           remark?: string | null;
           entered_by_employee_id?: string | null;
           created_at?: string;
+          is_platform_owner?: boolean;
         };
         Update: {
           id?: string;
@@ -654,6 +673,7 @@ export type Database = {
           remark?: string | null;
           entered_by_employee_id?: string | null;
           created_at?: string;
+          is_platform_owner?: boolean;
         };
         Relationships: [
           {
@@ -2731,6 +2751,17 @@ export type Database = {
           effective_from: string;
           entered_by_employee_id: string | null;
           created_at: string;
+          ctc_annual: number | null;
+          basic_percent_of_ctc: number;
+          hra_percent_of_basic: number;
+          employer_pf_percent: number;
+          employee_pf_percent: number;
+          pf_wage_ceiling: number;
+          esi_applicable: boolean;
+          esi_employee_percent: number;
+          esi_employer_percent: number;
+          professional_tax_amount: number;
+          pt_state: string | null;
         };
         Insert: {
           id?: string;
@@ -2740,6 +2771,17 @@ export type Database = {
           effective_from: string;
           entered_by_employee_id?: string | null;
           created_at?: string;
+          ctc_annual?: number | null;
+          basic_percent_of_ctc?: number;
+          hra_percent_of_basic?: number;
+          employer_pf_percent?: number;
+          employee_pf_percent?: number;
+          pf_wage_ceiling?: number;
+          esi_applicable?: boolean;
+          esi_employee_percent?: number;
+          esi_employer_percent?: number;
+          professional_tax_amount?: number;
+          pt_state?: string | null;
         };
         Update: {
           id?: string;
@@ -2749,6 +2791,17 @@ export type Database = {
           effective_from?: string;
           entered_by_employee_id?: string | null;
           created_at?: string;
+          ctc_annual?: number | null;
+          basic_percent_of_ctc?: number;
+          hra_percent_of_basic?: number;
+          employer_pf_percent?: number;
+          employee_pf_percent?: number;
+          pf_wage_ceiling?: number;
+          esi_applicable?: boolean;
+          esi_employee_percent?: number;
+          esi_employer_percent?: number;
+          professional_tax_amount?: number;
+          pt_state?: string | null;
         };
         Relationships: [
           {
@@ -2761,6 +2814,153 @@ export type Database = {
           {
             foreignKeyName: "employee_salary_entered_by_employee_id_fkey";
             columns: ["entered_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      employee_settlement_line_items: {
+        Row: {
+          id: string;
+          settlement_id: string;
+          kind: "Addition" | "Deduction";
+          category: string;
+          description: string | null;
+          amount: number;
+          added_by_employee_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          settlement_id: string;
+          kind: "Addition" | "Deduction";
+          category: string;
+          description?: string | null;
+          amount: number;
+          added_by_employee_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          settlement_id?: string;
+          kind?: "Addition" | "Deduction";
+          category?: string;
+          description?: string | null;
+          amount?: number;
+          added_by_employee_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "employee_settlement_line_items_settlement_id_fkey";
+            columns: ["settlement_id"];
+            isOneToOne: false;
+            referencedRelation: "employee_settlements";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "employee_settlement_line_items_added_by_employee_id_fkey";
+            columns: ["added_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      employee_settlements: {
+        Row: {
+          id: string;
+          employee_id: string;
+          company_id: string;
+          separation_type: "Resignation" | "Termination";
+          resignation_date: string;
+          last_working_day: string;
+          reason: string | null;
+          notice_period_required_days: number;
+          notice_period_served_days: number;
+          status: "Draft" | "Finalized" | "Paid";
+          initiated_by_employee_id: string | null;
+          initiated_at: string;
+          finalized_by_employee_id: string | null;
+          finalized_at: string | null;
+          payment_date: string | null;
+          paid_by_employee_id: string | null;
+          remark: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          employee_id: string;
+          company_id: string;
+          separation_type: "Resignation" | "Termination";
+          resignation_date: string;
+          last_working_day: string;
+          reason?: string | null;
+          notice_period_required_days?: number;
+          notice_period_served_days?: number;
+          status?: "Draft" | "Finalized" | "Paid";
+          initiated_by_employee_id?: string | null;
+          initiated_at?: string;
+          finalized_by_employee_id?: string | null;
+          finalized_at?: string | null;
+          payment_date?: string | null;
+          paid_by_employee_id?: string | null;
+          remark?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          employee_id?: string;
+          company_id?: string;
+          separation_type?: "Resignation" | "Termination";
+          resignation_date?: string;
+          last_working_day?: string;
+          reason?: string | null;
+          notice_period_required_days?: number;
+          notice_period_served_days?: number;
+          status?: "Draft" | "Finalized" | "Paid";
+          initiated_by_employee_id?: string | null;
+          initiated_at?: string;
+          finalized_by_employee_id?: string | null;
+          finalized_at?: string | null;
+          payment_date?: string | null;
+          paid_by_employee_id?: string | null;
+          remark?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "employee_settlements_employee_id_fkey";
+            columns: ["employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "employee_settlements_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "employee_settlements_initiated_by_employee_id_fkey";
+            columns: ["initiated_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "employee_settlements_finalized_by_employee_id_fkey";
+            columns: ["finalized_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "employee_settlements_paid_by_employee_id_fkey";
+            columns: ["paid_by_employee_id"];
             isOneToOne: false;
             referencedRelation: "employees";
             referencedColumns: ["id"];
@@ -2797,6 +2997,151 @@ export type Database = {
           },
         ];
       };
+      employee_documents: {
+        Row: {
+          id: string;
+          employee_id: string;
+          company_id: string;
+          doc_type: string;
+          file_name: string;
+          storage_path: string;
+          mime_type: string | null;
+          file_size: number | null;
+          notes: string | null;
+          uploaded_by_employee_id: string | null;
+          uploaded_at: string;
+        };
+        Insert: {
+          id?: string;
+          employee_id: string;
+          company_id: string;
+          doc_type: string;
+          file_name: string;
+          storage_path: string;
+          mime_type?: string | null;
+          file_size?: number | null;
+          notes?: string | null;
+          uploaded_by_employee_id?: string | null;
+          uploaded_at?: string;
+        };
+        Update: {
+          id?: string;
+          employee_id?: string;
+          company_id?: string;
+          doc_type?: string;
+          file_name?: string;
+          storage_path?: string;
+          mime_type?: string | null;
+          file_size?: number | null;
+          notes?: string | null;
+          uploaded_by_employee_id?: string | null;
+          uploaded_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "employee_documents_employee_id_fkey";
+            columns: ["employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "employee_documents_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "employee_documents_uploaded_by_employee_id_fkey";
+            columns: ["uploaded_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      employee_onboarding_progress: {
+        Row: {
+          employee_id: string;
+          checklist_item_id: string;
+          completed_at: string | null;
+          completed_by_employee_id: string | null;
+          notes: string | null;
+        };
+        Insert: {
+          employee_id: string;
+          checklist_item_id: string;
+          completed_at?: string | null;
+          completed_by_employee_id?: string | null;
+          notes?: string | null;
+        };
+        Update: {
+          employee_id?: string;
+          checklist_item_id?: string;
+          completed_at?: string | null;
+          completed_by_employee_id?: string | null;
+          notes?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "employee_onboarding_progress_employee_id_fkey";
+            columns: ["employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "employee_onboarding_progress_checklist_item_id_fkey";
+            columns: ["checklist_item_id"];
+            isOneToOne: false;
+            referencedRelation: "onboarding_checklist_items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "employee_onboarding_progress_completed_by_employee_id_fkey";
+            columns: ["completed_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      onboarding_checklist_items: {
+        Row: {
+          id: string;
+          company_id: string;
+          title: string;
+          sort_order: number;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          title: string;
+          sort_order?: number;
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          title?: string;
+          sort_order?: number;
+          active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_checklist_items_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       employees: {
         Row: {
           id: string;
@@ -2826,6 +3171,15 @@ export type Database = {
           custom_accent_color: string | null;
           companion_enabled: boolean;
           companion_name: string | null;
+          pan_number: string | null;
+          uan_number: string | null;
+          pf_number: string | null;
+          esi_number: string | null;
+          bank_account_holder_name: string | null;
+          bank_account_no: string | null;
+          bank_ifsc: string | null;
+          bank_name: string | null;
+          reports_to_employee_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -2856,6 +3210,15 @@ export type Database = {
           custom_accent_color?: string | null;
           companion_enabled?: boolean;
           companion_name?: string | null;
+          pan_number?: string | null;
+          uan_number?: string | null;
+          pf_number?: string | null;
+          esi_number?: string | null;
+          bank_account_holder_name?: string | null;
+          bank_account_no?: string | null;
+          bank_ifsc?: string | null;
+          bank_name?: string | null;
+          reports_to_employee_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -2886,6 +3249,14 @@ export type Database = {
           custom_accent_color?: string | null;
           companion_enabled?: boolean;
           companion_name?: string | null;
+          pan_number?: string | null;
+          uan_number?: string | null;
+          pf_number?: string | null;
+          esi_number?: string | null;
+          bank_account_holder_name?: string | null;
+          bank_account_no?: string | null;
+          bank_ifsc?: string | null;
+          bank_name?: string | null;
           created_at?: string;
         };
         Relationships: [
@@ -2901,6 +3272,13 @@ export type Database = {
             columns: ["role_id"];
             isOneToOne: false;
             referencedRelation: "roles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "employees_reports_to_employee_id_fkey";
+            columns: ["reports_to_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
             referencedColumns: ["id"];
           },
         ];
@@ -3663,6 +4041,61 @@ export type Database = {
         Relationships: [
         ];
       };
+      leave_balance_adjustments: {
+        Row: {
+          id: string;
+          employee_id: string;
+          leave_type_id: string;
+          leave_year: number;
+          adjustment_days: number;
+          reason: string | null;
+          entered_by_employee_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          employee_id: string;
+          leave_type_id: string;
+          leave_year: number;
+          adjustment_days: number;
+          reason?: string | null;
+          entered_by_employee_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          employee_id?: string;
+          leave_type_id?: string;
+          leave_year?: number;
+          adjustment_days?: number;
+          reason?: string | null;
+          entered_by_employee_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "leave_balance_adjustments_employee_id_fkey";
+            columns: ["employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "leave_balance_adjustments_leave_type_id_fkey";
+            columns: ["leave_type_id"];
+            isOneToOne: false;
+            referencedRelation: "leave_types";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "leave_balance_adjustments_entered_by_employee_id_fkey";
+            columns: ["entered_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       leave_coverage_assignments: {
         Row: {
           id: string;
@@ -3745,6 +4178,7 @@ export type Database = {
           decided_at: string | null;
           decision_remark: string | null;
           created_at: string;
+          leave_type_id: string | null;
         };
         Insert: {
           id?: string;
@@ -3759,6 +4193,7 @@ export type Database = {
           decided_at?: string | null;
           decision_remark?: string | null;
           created_at?: string;
+          leave_type_id?: string | null;
         };
         Update: {
           id?: string;
@@ -3773,6 +4208,7 @@ export type Database = {
           decided_at?: string | null;
           decision_remark?: string | null;
           created_at?: string;
+          leave_type_id?: string | null;
         };
         Relationships: [
           {
@@ -3794,6 +4230,60 @@ export type Database = {
             columns: ["decided_by_employee_id"];
             isOneToOne: false;
             referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "leave_requests_leave_type_id_fkey";
+            columns: ["leave_type_id"];
+            isOneToOne: false;
+            referencedRelation: "leave_types";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      leave_types: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          code: string | null;
+          paid: boolean;
+          annual_accrual_days: number;
+          accrual_frequency: "Monthly" | "Upfront";
+          carry_forward_cap: number | null;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          code?: string | null;
+          paid?: boolean;
+          annual_accrual_days?: number;
+          accrual_frequency?: "Monthly" | "Upfront";
+          carry_forward_cap?: number | null;
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          name?: string;
+          code?: string | null;
+          paid?: boolean;
+          annual_accrual_days?: number;
+          accrual_frequency?: "Monthly" | "Upfront";
+          carry_forward_cap?: number | null;
+          active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "leave_types_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
             referencedColumns: ["id"];
           },
         ];
@@ -5046,6 +5536,14 @@ export type Database = {
           paid_by_employee_id: string | null;
           remark: string | null;
           created_at: string;
+          basic_amount: number | null;
+          hra_amount: number | null;
+          special_allowance_amount: number | null;
+          employee_pf_amount: number;
+          employer_pf_amount: number;
+          employee_esi_amount: number;
+          employer_esi_amount: number;
+          professional_tax_amount: number;
         };
         Insert: {
           id?: string;
@@ -5061,6 +5559,14 @@ export type Database = {
           paid_by_employee_id?: string | null;
           remark?: string | null;
           created_at?: string;
+          basic_amount?: number | null;
+          hra_amount?: number | null;
+          special_allowance_amount?: number | null;
+          employee_pf_amount?: number;
+          employer_pf_amount?: number;
+          employee_esi_amount?: number;
+          employer_esi_amount?: number;
+          professional_tax_amount?: number;
         };
         Update: {
           id?: string;
@@ -5076,6 +5582,14 @@ export type Database = {
           paid_by_employee_id?: string | null;
           remark?: string | null;
           created_at?: string;
+          basic_amount?: number | null;
+          hra_amount?: number | null;
+          special_allowance_amount?: number | null;
+          employee_pf_amount?: number;
+          employer_pf_amount?: number;
+          employee_esi_amount?: number;
+          employer_esi_amount?: number;
+          professional_tax_amount?: number;
         };
         Relationships: [
           {
@@ -7033,59 +7547,6 @@ export type Database = {
           current_stock: number | null;
         };
         Relationships: [];
-      };
-      payments: {
-        Row: {
-          id: string;
-          company_id: string;
-          razorpay_order_id: string | null;
-          razorpay_payment_id: string | null;
-          razorpay_subscription_id: string | null;
-          amount: number;
-          currency: string;
-          plan_id: string;
-          status: string;
-          notes: Json | null;
-          created_at: string;
-          paid_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          company_id: string;
-          razorpay_order_id?: string | null;
-          razorpay_payment_id?: string | null;
-          razorpay_subscription_id?: string | null;
-          amount: number;
-          currency?: string;
-          plan_id: string;
-          status: string;
-          notes?: Json | null;
-          created_at?: string;
-          paid_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          company_id?: string;
-          razorpay_order_id?: string | null;
-          razorpay_payment_id?: string | null;
-          razorpay_subscription_id?: string | null;
-          amount?: number;
-          currency?: string;
-          plan_id?: string;
-          status?: string;
-          notes?: Json | null;
-          created_at?: string;
-          paid_at?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "payments_company_id_fkey";
-            columns: ["company_id"];
-            isOneToOne: false;
-            referencedRelation: "companies";
-            referencedColumns: ["id"];
-          },
-        ];
       };
     };
     Functions: {

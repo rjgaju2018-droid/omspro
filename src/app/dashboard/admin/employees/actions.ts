@@ -49,6 +49,18 @@ function profileFields(formData: FormData) {
     family_contact_2_name: strOrNull(formData, "family_contact_2_name"),
     family_contact_2_relation: strOrNull(formData, "family_contact_2_relation"),
     family_contact_2_number: strOrNull(formData, "family_contact_2_number"),
+    // 2026-09-11 (Payroll Phase 1) — statutory identity + bank details for
+    // disbursement/payslips (see db/2026-09-11-payroll-ctc-structure-and-
+    // statutory-fields.sql). Same shared/backfill pattern as the rest of
+    // this function — optional, fill in per employee whenever it's known.
+    pan_number: strOrNull(formData, "pan_number"),
+    uan_number: strOrNull(formData, "uan_number"),
+    pf_number: strOrNull(formData, "pf_number"),
+    esi_number: strOrNull(formData, "esi_number"),
+    bank_account_holder_name: strOrNull(formData, "bank_account_holder_name"),
+    bank_account_no: strOrNull(formData, "bank_account_no"),
+    bank_ifsc: strOrNull(formData, "bank_ifsc"),
+    bank_name: strOrNull(formData, "bank_name"),
   };
 }
 
@@ -187,6 +199,101 @@ export async function createEmployee(_prev: EmployeeFormState, formData: FormDat
     message: `Welcome to the team, ${name}! Your ID is ready — ab to party to banti hai! 🎉`,
   });
   return { error: null, success: { email } };
+}
+
+export type DocumentActionState = { error: string | null; success: boolean; message?: string };
+
+const EMPLOYEE_DOCUMENT_BUCKET = "employee-documents";
+const MAX_EMPLOYEE_DOCUMENT_BYTES = 15 * 1024 * 1024; // 15MB — same cap used by the UI copy and safe for HR docs.
+
+export async function uploadEmployeeDocument(_prev: DocumentActionState, formData: FormData): Promise<DocumentActionState> {
+  await requireCapability("employee_admin");
+  const supabase = createServiceRoleClient();
+
+  const employeeId = str(formData, "employee_id");
+  const docType = str(formData, "doc_type");
+  const notes = strOrNull(formData, "notes");
+  const file = formData.get("file");
+
+  if (!employeeId || !docType) {
+    return { error: "Employee and document type are required.", success: false };
+  }
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "No file selected.", success: false };
+  }
+  if (file.size > MAX_EMPLOYEE_DOCUMENT_BYTES) {
+    return { error: "File is too large — max 15MB.", success: false };
+  }
+
+  const { data: employee, error: employeeError } = await supabase
+    .from("employees")
+    .select("company_id")
+    .eq("id", employeeId)
+    .single();
+
+  if (employeeError || !employee) {
+    return { error: "Employee not found.", success: false };
+  }
+
+  const safeName = file.name.replace(/[^\w.\- ]/g, "_").slice(0, 180) || "document";
+  const storagePath = `${randomUUID()}-${safeName}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error: uploadError } = await supabase.storage.from(EMPLOYEE_DOCUMENT_BUCKET).upload(storagePath, buffer, {
+    contentType: file.type || "application/octet-stream",
+    upsert: false,
+  });
+
+  if (uploadError) {
+    return { error: `Upload failed: ${uploadError.message}`, success: false };
+  }
+
+  const { error: insertError } = await supabase.from("employee_documents").insert({
+    employee_id: employeeId,
+    company_id: employee.company_id,
+    doc_type: docType,
+    file_name: safeName,
+    storage_path: storagePath,
+    mime_type: file.type || null,
+    file_size: file.size,
+    notes,
+  });
+
+  if (insertError) {
+    await supabase.storage.from(EMPLOYEE_DOCUMENT_BUCKET).remove([storagePath]);
+    return { error: `Could not save document metadata: ${insertError.message}`, success: false };
+  }
+
+  revalidatePath("/dashboard/admin/employees");
+  return { error: null, success: true, message: "Document uploaded." };
+}
+
+export async function deleteEmployeeDocument(documentId: string): Promise<DocumentActionState> {
+  await requireCapability("employee_admin");
+  const supabase = createServiceRoleClient();
+
+  const { data: doc, error: lookupError } = await supabase
+    .from("employee_documents")
+    .select("storage_path")
+    .eq("id", documentId)
+    .single();
+
+  if (lookupError || !doc) {
+    return { error: "Document not found.", success: false };
+  }
+
+  const { error: storageError } = await supabase.storage.from(EMPLOYEE_DOCUMENT_BUCKET).remove([doc.storage_path]);
+  if (storageError) {
+    return { error: `Could not delete document from storage: ${storageError.message}`, success: false };
+  }
+
+  const { error: deleteError } = await supabase.from("employee_documents").delete().eq("id", documentId);
+  if (deleteError) {
+    return { error: `Could not remove document record: ${deleteError.message}`, success: false };
+  }
+
+  revalidatePath("/dashboard/admin/employees");
+  return { error: null, success: true, message: "Document removed." };
 }
 
 export type SimpleActionState = { error: string | null; success: boolean };

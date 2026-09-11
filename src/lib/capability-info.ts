@@ -13,6 +13,8 @@ export type CapabilityInfo = {
 };
 
 export const CAPABILITY_INFO: CapabilityInfo[] = [
+  { code: "platform_owner", label: "Platform Control", icon: "🛡️", href: "/dashboard/admin/platform",
+    description: "Manage every customer workspace, free access, negotiated pricing, discounts, and suspension." },
   { code: "order_entry", label: "Order Entry", icon: "📝", href: "/dashboard/orders",
     description: "View, edit, delete orders, or enter a new one — PO/RF/RG No. assigned automatically, duplicate-dispatched-order reuse checked first." },
   { code: "csv_upload", label: "CSV Upload", icon: "📤", href: "/dashboard/csv-upload",

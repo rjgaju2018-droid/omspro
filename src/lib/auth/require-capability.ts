@@ -76,6 +76,7 @@ export type AuthedEmployee = {
   roleId: string;
   roleName: string;
   capabilities: string[];
+  isPlatformOwner: boolean;
 };
 
 /**
@@ -111,7 +112,7 @@ export async function getAuthedEmployee(): Promise<AuthedEmployee> {
   // metadata and are just as correct.
   const { data: employee, error } = await supabase
     .from("employees")
-    .select("id, company_id, name, role_id, active, photo_url")
+    .select("id, company_id, name, role_id, active, photo_url, is_platform_owner")
     .eq("auth_user_id", user.id)
     .single();
 
@@ -134,7 +135,7 @@ export async function getAuthedEmployee(): Promise<AuthedEmployee> {
   // missing RLS policy on a table that legitimately has rows).
   const finSupabase = createServiceRoleClient();
 
-  const [{ data: role }, { data: caps }, { data: access }, { data: storeAccess }, { data: coverage }] = await Promise.all([
+  const [{ data: role }, { data: caps }, { data: access }, { data: storeAccess }, { data: coverage }, { data: allCompanies }, { data: allCapabilities }] = await Promise.all([
     supabase.from("roles").select("name").eq("id", employee.role_id).single(),
     supabase.from("role_capabilities").select("capability_code").eq("role_id", employee.role_id),
     supabase.from("employee_company_access").select("company_id").eq("employee_id", employee.id),
@@ -150,7 +151,11 @@ export async function getAuthedEmployee(): Promise<AuthedEmployee> {
       .eq("covering_employee_id", employee.id)
       .lte("from_date", today)
       .gte("to_date", today),
+    finSupabase.from("companies").select("id, access_mode").eq("active", true),
+    finSupabase.from("capabilities").select("code"),
   ]);
+
+  const isPlatformOwner = employee.is_platform_owner === true;
 
   const coverageStoreIds = Array.from(new Set((coverage ?? []).map((c) => c.store_id)));
   // The store list (ad-spend/page.tsx) is fetched `.in("company_id",
@@ -165,14 +170,18 @@ export async function getAuthedEmployee(): Promise<AuthedEmployee> {
         )
       : [];
 
-  const companyIds = Array.from(
-    new Set([employee.company_id, ...(access ?? []).map((a) => a.company_id), ...coverageCompanyIds])
-  );
+  const companyIds = isPlatformOwner
+    ? (allCompanies ?? []).map((company) => company.id)
+    : Array.from(new Set([employee.company_id, ...(access ?? []).map((a) => a.company_id), ...coverageCompanyIds]));
   const storeIds = Array.from(new Set([...(storeAccess ?? []).map((a) => a.store_id), ...coverageStoreIds]));
 
   const cookieStore = await cookies();
   const requested = cookieStore.get(CURRENT_COMPANY_COOKIE)?.value;
   const currentCompanyId = requested && companyIds.includes(requested) ? requested : employee.company_id;
+  const currentCompany = (allCompanies ?? []).find((company) => company.id === currentCompanyId);
+  if (!isPlatformOwner && currentCompany?.access_mode === "suspended") {
+    throw new UnauthorizedError("This workspace access is currently suspended.");
+  }
 
   return {
     id: employee.id,
@@ -184,7 +193,10 @@ export async function getAuthedEmployee(): Promise<AuthedEmployee> {
     photoUrl: employee.photo_url,
     roleId: employee.role_id,
     roleName: role?.name ?? "",
-    capabilities: (caps ?? []).map((c) => c.capability_code),
+    capabilities: isPlatformOwner
+      ? [...(allCapabilities ?? []).map((capability) => capability.code), "platform_owner"]
+      : (caps ?? []).map((c) => c.capability_code),
+    isPlatformOwner,
   };
 }
 
@@ -203,5 +215,11 @@ export async function requireCapability(capability: string): Promise<AuthedEmplo
   if (!employee.capabilities.includes(capability)) {
     throw new ForbiddenError(capability);
   }
+  return employee;
+}
+
+export async function requirePlatformOwner(): Promise<AuthedEmployee> {
+  const employee = await getAuthedEmployee();
+  if (!employee.isPlatformOwner) throw new ForbiddenError("platform_owner");
   return employee;
 }

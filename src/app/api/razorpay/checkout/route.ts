@@ -51,7 +51,16 @@ export async function POST(request: Request) {
     if (!(plan in PLAN_AMOUNT_PAISE)) {
       return NextResponse.json({ error: "Unknown plan." }, { status: 400 });
     }
-    const amount = PLAN_AMOUNT_PAISE[plan];
+    const { data: company } = await createServiceRoleClient()
+      .from("companies")
+      .select("access_mode, monthly_price_inr, discount_percent")
+      .eq("id", employee.currentCompanyId)
+      .single();
+    if (company?.access_mode === "suspended") {
+      return NextResponse.json({ error: "This workspace is suspended. Contact support." }, { status: 403 });
+    }
+    const baseAmount = company?.monthly_price_inr != null ? company.monthly_price_inr * 100 : PLAN_AMOUNT_PAISE[plan];
+    const amount = Math.max(100, Math.round(baseAmount * (1 - Number(company?.discount_percent ?? 0) / 100)));
 
     const rzp = razorpayClient();
     const order = await rzp.orders.create({

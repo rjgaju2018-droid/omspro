@@ -56,9 +56,10 @@ async function MaterialOutChalanReportInner({ id }: { id: string }) {
     : { data: [] as { stock_out_id: string; orders: { ref_no: string } | null }[] };
   const refsByLine = new Map<string, string[]>();
   for (const l of orderLinks ?? []) {
-    if (!l.orders) continue;
+    const order = Array.isArray(l.orders) ? l.orders[0] : l.orders;
+    if (!order) continue;
     const list = refsByLine.get(l.stock_out_id) ?? [];
-    list.push(l.orders.ref_no);
+    list.push(order.ref_no);
     refsByLine.set(l.stock_out_id, list);
   }
 

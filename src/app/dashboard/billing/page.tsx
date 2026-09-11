@@ -35,7 +35,7 @@ export default async function BillingPage() {
   const employee = await getAuthedEmployee();
   const service = createServiceRoleClient();
   const [{ data: company }, { data: status }, { data: history }] = await Promise.all([
-    service.from("companies").select("name, plan, trial_ends_at").eq("id", employee.currentCompanyId).single(),
+    service.from("companies").select("name, plan, trial_ends_at, access_mode, monthly_price_inr, discount_percent").eq("id", employee.currentCompanyId).single(),
     service.rpc("trial_status", { p_company_id: employee.currentCompanyId }),
     service
       .from("payments")
@@ -55,6 +55,7 @@ export default async function BillingPage() {
   const badge = statusText[typeof status === "string" ? status : "no_expiry"] ?? statusText.no_expiry;
   const currentPlanId = company?.plan ?? "trial";
   const isTrialLike = currentPlanId === "trial";
+  const accessLabel = company?.access_mode === "free" ? "Free access granted by platform owner" : company?.access_mode === "suspended" ? "Workspace suspended" : null;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -74,6 +75,15 @@ export default async function BillingPage() {
           </span>
         )}
       </div>
+
+      {accessLabel && (
+        <div className={`rounded-xl border px-5 py-4 text-sm font-semibold ${company?.access_mode === "suspended" ? "border-red-200 bg-red-50 text-red-700" : "border-sky-200 bg-sky-50 text-sky-700"}`}>
+          {accessLabel}
+          {company?.monthly_price_inr != null && company.discount_percent > 0 && (
+            <span className="ml-2 font-normal">Negotiated price: ₹{company.monthly_price_inr.toLocaleString("en-IN")} with {company.discount_percent}% discount</span>
+          )}
+        </div>
+      )}
 
       {isTrialLike && (
         <section className="rounded-xl border border-amber-300 bg-amber-50 p-5">
