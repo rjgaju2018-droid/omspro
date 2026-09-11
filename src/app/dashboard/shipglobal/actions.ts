@@ -21,6 +21,7 @@ import {
 // db/2026-09-01-multi-courier-booking-and-freight-recon.sql and
 // src/lib/couriers/rate-card-fallback.ts's header comment.
 import { estimateBookedAmountFromRateCard } from "@/lib/couriers/rate-card-fallback";
+import { parseFullAddress, looksLikeFullAddress } from "@/lib/parse-full-address";
 
 export type ShipglobalLookupOrder = {
   id: string;
@@ -48,6 +49,12 @@ export type ShipglobalLookupOrder = {
   buyerDestinationCountry: string | null;
   hsnNo: string | null;
   skuLabel: string | null;
+  // 2026-09-10 — same fix as courier-booking/actions.ts's
+  // CourierBookingLookupOrder.goodsDescription: skuLabel is a raw SKU CODE
+  // (orders.sku_label, "SKU" on the order form), not a description — this
+  // composes the real Item Category name (+ Size, when present) instead,
+  // for the create form's "Item Name"/description-shaped fields.
+  goodsDescription: string | null;
   qty: number;
   lengthCm: number | null;
   widthCm: number | null;
@@ -80,7 +87,7 @@ export async function lookupOrderForShipglobal(
   const { data: orders, error: orderError } = await supabase
     .from("orders")
     .select(
-      "id, ref_no, buyer_name_address, contact_no, email_id, tax_id, sku_label, qty, buyer_address1, buyer_address2, buyer_address3, buyer_city, buyer_state, buyer_postal_code, destination_country"
+      "id, ref_no, buyer_name_address, contact_no, email_id, tax_id, sku_label, size_label, qty, buyer_address1, buyer_address2, buyer_address3, buyer_city, buyer_state, buyer_postal_code, destination_country, item_categories(name)"
     )
     .eq("ref_no", refNo)
     .in("company_id", employee.companyIds);
@@ -102,24 +109,58 @@ export async function lookupOrderForShipglobal(
     .eq("order_id", order.id)
     .maybeSingle();
 
+  // 2026-09-10 — same self-healing fallback as courier-booking/actions.ts's
+  // lookupOrderForCourierBooking (see the comment there and
+  // src/lib/parse-full-address.ts for the full root-cause writeup): an
+  // order entered by pasting the buyer's full address into Address Line 1
+  // instead of the structured fields leaves City/State/Postcode blank,
+  // which is exactly what caused a real courier "state and postal code
+  // mismatch" rejection. Only used when City/State/Postcode are ALL blank.
+  const structuredAddressMissing = !order.buyer_city && !order.buyer_state && !order.buyer_postal_code;
+  const parsedFallback =
+    structuredAddressMissing && order.buyer_address1 && looksLikeFullAddress(order.buyer_address1)
+      ? parseFullAddress(order.buyer_address1)
+      : null;
+
+  // Same embedded-relation shape Supabase returns elsewhere in this app —
+  // see documents/actions.ts's lookupOrderForPurchaseBill.
+  const category = order.item_categories as unknown as { name: string } | { name: string }[] | null;
+  const categoryName = Array.isArray(category) ? category[0]?.name ?? null : category?.name ?? null;
+  const goodsDescription = categoryName
+    ? order.size_label
+      ? `${categoryName}, Size ${order.size_label}`
+      : categoryName
+    : order.sku_label;
+
+  // 2026-09-10 — this used to fall back to order.buyer_name_address
+  // UNCONDITIONALLY, which is exactly the 2026-09-05 bug pattern
+  // courier-booking/actions.ts's lookupOrderForCourierBooking already had
+  // to fix (the raw multi-line "name + full address" blob on OLDER orders
+  // dumped straight into a single-line Name input, unreadable — see that
+  // file's buyerNameAddress comment). looksLikeFullAddress guards it here
+  // too now, the same way.
+  const buyerNameFallback =
+    order.buyer_name_address && !looksLikeFullAddress(order.buyer_name_address) ? order.buyer_name_address.trim() || null : null;
+
   return {
     error: null,
     order: {
       id: order.id,
       refNo: order.ref_no,
-      buyerName: dispatch?.buyer_name ?? order.buyer_name_address,
+      buyerName: dispatch?.buyer_name ?? buyerNameFallback,
       buyerMail: dispatch?.buyer_mail ?? order.email_id,
       buyerContact: dispatch?.buyer_contact ?? order.contact_no,
       buyerCountry: dispatch?.buyer_country ?? null,
-      buyerAddress1: order.buyer_address1,
-      buyerAddress2: order.buyer_address2,
+      buyerAddress1: parsedFallback ? parsedFallback.address1 || order.buyer_address1 : order.buyer_address1,
+      buyerAddress2: parsedFallback && parsedFallback.address2 ? parsedFallback.address2 : order.buyer_address2,
       buyerAddress3: order.buyer_address3,
-      buyerCity: order.buyer_city,
-      buyerState: order.buyer_state,
-      buyerPostalCode: order.buyer_postal_code,
-      buyerDestinationCountry: order.destination_country,
+      buyerCity: parsedFallback && parsedFallback.city ? parsedFallback.city : order.buyer_city,
+      buyerState: parsedFallback && parsedFallback.state ? parsedFallback.state : order.buyer_state,
+      buyerPostalCode: parsedFallback && parsedFallback.postalCode ? parsedFallback.postalCode : order.buyer_postal_code,
+      buyerDestinationCountry: order.destination_country ?? (parsedFallback && parsedFallback.country ? parsedFallback.country : null),
       hsnNo: dispatch?.hsn_no ?? null,
       skuLabel: order.sku_label,
+      goodsDescription,
       qty: order.qty,
       lengthCm: dispatch?.length_cm ?? null,
       widthCm: dispatch?.width_cm ?? null,

@@ -37,6 +37,7 @@ import { resolveCourierCredentials } from "@/lib/couriers/credentials";
 import { notifyCompanion } from "@/lib/companion/notify";
 import { countryCodeFor } from "@/lib/postal-lookup";
 import { logEntryError } from "@/lib/error-log/log-entry-error";
+import { parseFullAddress, looksLikeFullAddress } from "@/lib/parse-full-address";
 
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
 type Courier = "fedex" | "ups" | "aramex" | "delhivery" | "shiprocket" | "dhl";
@@ -86,6 +87,30 @@ function resolveRecipientCountryCode(formData: FormData): { code: string } | { e
   return { code };
 }
 
+// 2026-09-10 — a real reported case: an order whose City/State/Postcode
+// had never been filled in (because the whole address had been pasted
+// into Address Line 1 instead — see src/lib/parse-full-address.ts) still
+// let the form be submitted with those blank, and FedEx (and UPS/Aramex/
+// DHL, which share this exact recipient-fields shape) rejected it with a
+// confusing "Recipient state and postal code mismatch" — a courier saying
+// that when it was actually just handed empty strings for both. Appends a
+// clear, actionable Hinglish hint pointing at the actual fix whenever the
+// courier's own error text looks like this kind of mismatch AND
+// City/State/Postcode really were blank at submit time; otherwise (a
+// GENUINE mismatch — real values that just don't agree) leaves the
+// courier's message as-is, since second-guessing a real validation isn't
+// something this app should silently do.
+function withAddressErrorHint(message: string, formData: FormData): string {
+  if (!/state.{0,25}postal|postal.{0,25}state|postcode.{0,25}state/i.test(message)) return message;
+  const city = str(formData, "recipient_city");
+  const state = str(formData, "recipient_state");
+  const postcode = str(formData, "recipient_postcode");
+  if (!city || !state || !postcode) {
+    return `${message} — City/State/Postcode me se koi field khali thi. Order ke "Structured Address" section me jaakar "✂ Split Address" button try karein (agar poora address Address Line 1 me paste ho gaya tha), ya yahan seedha bhar dein aur dobara try karein.`;
+  }
+  return `${message} — City, State aur Postcode dubara check karein (in teeno ka aapas me match hona zaroori hai).`;
+}
+
 // -----------------------------------------------------------------------
 // Order lookup — same shape as Shipglobal's own lookupOrderForShipglobal,
 // generalized (not courier-specific; every courier's create form starts
@@ -94,17 +119,26 @@ function resolveRecipientCountryCode(formData: FormData): { code: string } | { e
 export type CourierBookingLookupOrder = {
   id: string;
   refNo: string;
+  // 2026-09-10: previously ONLY dispatch_invoices.buyer_name (post-dispatch
+  // — see the lookup function below for why that made this almost always
+  // null at booking time, since booking normally happens BEFORE dispatch).
+  // Now also falls back to orders.buyer_name_address when that column
+  // safely looks like a plain name and not a raw address blob — see the
+  // buyerNameFallback comment in lookupOrderForCourierBooking below for the
+  // full reasoning and the looksLikeFullAddress guard that makes this safe
+  // for both old and new orders.
   buyerName: string | null;
   // Raw free-text "Buyer Name & Address" the order was entered/imported
-  // with (orders.buyer_name_address — a multi-line paste-in-one-blob field,
-  // NOT split into name/address1/city/state/postcode anywhere in this
-  // schema; see order-form.tsx's textarea). Shown as a reference block in
-  // the form (create-shipment-form.tsx) so the employee can read the real
-  // address and type it into the structured fields below — it must NEVER
-  // be used as a `buyerName`/recipient-name value itself (that was the
-  // 2026-09-05 bug: dumping this whole multi-line blob into the single-line
-  // Name input produced a garbled, unreadable name with no visible
-  // separators, since a text <input> renders embedded newlines as nothing).
+  // with (orders.buyer_name_address — a multi-line paste-in-one-blob field
+  // on OLDER orders, NOT split into name/address1/city/state/postcode
+  // anywhere in this schema; see order-form.tsx's textarea). Shown as a
+  // reference block in the form (create-shipment-form.tsx) so the employee
+  // can read the real address and type it into the structured fields below.
+  // Must never be dumped into buyerName UNPARSED (that was the 2026-09-05
+  // bug: a garbled, unreadable name with no visible separators, since a
+  // text <input> renders embedded newlines as nothing) — buyerName above
+  // now only takes this value when it passes looksLikeFullAddress's check
+  // that it does NOT look like a full address blob.
   buyerNameAddress: string | null;
   buyerMail: string | null;
   buyerContact: string | null;
@@ -129,6 +163,20 @@ export type CourierBookingLookupOrder = {
   buyerDestinationCountry: string | null;
   hsnNo: string | null;
   skuLabel: string | null;
+  // 2026-09-10 — "goods description order me already hai to booking page
+  // par kyu nahi aa rahi": the Create Shipment form's "Goods Description"
+  // box (customs commodity description) was defaulting from skuLabel
+  // (orders.sku_label — a raw SKU CODE, e.g. "TS-RED-M", not a description;
+  // the order form itself labels that field "SKU" with placeholder "SKU
+  // code"), which is frequently blank (optional field) or unreadable to a
+  // courier/customs officer either way. The order's actual item
+  // description lives on item_categories.name (the "Item Category"
+  // dropdown at order entry — e.g. "Cotton T-Shirt", "Jute Bag") — composed
+  // here with size_label when present (e.g. "Cotton T-Shirt, Size M") as a
+  // real customs-appropriate description. Falls back to skuLabel alone if
+  // the category name is somehow missing, same as before. Still a plain
+  // editable input on the form — this only fixes the DEFAULT.
+  goodsDescription: string | null;
   qty: number;
   lengthCm: number | null;
   widthCm: number | null;
@@ -152,6 +200,16 @@ export type CourierBookingLookupOrder = {
   // the actual combined-package weight/measurements before submitting.
   combinedOrderIds: string[];
   combinedRefNos: string[];
+  // 2026-09-10 — "buyer ki tax id agr aati hai to vo kaha add hoyegi": the
+  // order's own VAT/EORI/IOSS number (orders.vat_number/eori_number/
+  // ioss_number — see the 2026-08-11 comment on orders' schema for why
+  // there are 3 separate fields instead of one; legacy orders.tax_id as a
+  // last resort for pre-2026-08-11 orders). Whichever one is set on this
+  // order — a shipment normally only needs the one relevant to its
+  // destination. Shown as an optional field on the booking form; FedEx
+  // wiring for this is new and unconfirmed against a real account (see
+  // fedex-ship.ts's own standing disclaimer) — leave blank if unsure.
+  buyerTaxId: string | null;
 };
 
 export type CourierBookingLookupState = { error: string | null; order: CourierBookingLookupOrder | null };
@@ -171,7 +229,10 @@ export async function lookupOrderForCourierBooking(
   const { data: orders, error: orderError } = await supabase
     .from("orders")
     .select(
-      "id, ref_no, buyer_name_address, contact_no, email_id, sku_label, qty, order_value_inr, buyer_country, buyer_address1, buyer_address2, buyer_address3, buyer_city, buyer_state, buyer_postal_code, destination_country, weight_kg, length_cm, width_cm, height_cm"
+      // 2026-09-10: added size_label + item_categories(name) — see
+      // goodsDescription below on CourierBookingLookupOrder for why. Also
+      // added vat_number/eori_number/ioss_number/tax_id — see buyerTaxId.
+      "id, ref_no, buyer_name_address, contact_no, email_id, sku_label, size_label, qty, order_value_inr, buyer_country, buyer_address1, buyer_address2, buyer_address3, buyer_city, buyer_state, buyer_postal_code, destination_country, weight_kg, length_cm, width_cm, height_cm, item_categories(name), vat_number, eori_number, ioss_number, tax_id"
     )
     .eq("ref_no", refNo)
     .in("company_id", employee.companyIds);
@@ -205,18 +266,71 @@ export async function lookupOrderForCourierBooking(
   const siblingRows = (siblings ?? []).filter((s) => s.id !== order.id);
   const combinedValue = siblingRows.reduce((sum, s) => sum + (s.order_value_inr ?? 0), order.order_value_inr ?? 0);
 
+  // 2026-09-10 — self-healing fallback for exactly the bug report that
+  // prompted this: an order entered by pasting the buyer's FULL address
+  // (name + street + city + state + zip + country) into the single
+  // Address Line 1 box instead of splitting it across the structured
+  // fields, leaving City/State/Postcode blank. That's what made a real
+  // FedEx booking fail with "Recipient state and postal code mismatch" —
+  // City/State/Postcode came through to FedEx as empty strings. Rather
+  // than requiring every such order to be manually re-edited first (see
+  // orders/order-edit-form.tsx's new "Split Address" button for that
+  // manual path), this booking-time lookup ALSO tries the same parser
+  // automatically whenever City/State/Postcode are all still blank and
+  // Address Line 1 looks like it's carrying a full address — so the
+  // Create Shipment screen's defaults come up correct the first time this
+  // order is booked, with zero action required on the order itself. Only
+  // ever used as a DEFAULT (see create-shipment-form.tsx) — still a plain
+  // editable input, never silently submitted without a look. An order
+  // that already has real City/State/Postcode on file is never touched by
+  // this (structuredAddressMissing guards that).
+  const structuredAddressMissing = !order.buyer_city && !order.buyer_state && !order.buyer_postal_code;
+  const parsedFallback =
+    structuredAddressMissing && order.buyer_address1 && looksLikeFullAddress(order.buyer_address1)
+      ? parseFullAddress(order.buyer_address1)
+      : null;
+
+  // Same embedded-relation shape Supabase returns elsewhere in this app
+  // for item_categories(name) (see documents/actions.ts's
+  // lookupOrderForPurchaseBill) — object for most PostgREST versions,
+  // array on some, so both are handled.
+  const category = order.item_categories as unknown as { name: string } | { name: string }[] | null;
+  const categoryName = Array.isArray(category) ? category[0]?.name ?? null : category?.name ?? null;
+  const goodsDescription = categoryName
+    ? order.size_label
+      ? `${categoryName}, Size ${order.size_label}`
+      : categoryName
+    : order.sku_label;
+
+  // 2026-09-10 — "buyer ka naam bhi nahi aara automatic addresh se": the
+  // buyerName default above (dispatch?.buyer_name) is ONLY ever populated
+  // post-dispatch (see the 2026-08-11 comment in invoices/actions.ts on the
+  // exact same gap for email/phone — dispatch is a LATER step than courier
+  // booking, so for most orders being booked for the first time,
+  // dispatch_invoices simply doesn't exist yet and this was always null).
+  // orders.buyer_name_address (relabeled to plain "Buyer Name" on the order
+  // form since the 2026-09-08 follow-up — see order-form.tsx) now holds a
+  // clean single name for any order entered after that change, so it's a
+  // safe fallback EXCEPT for older orders where this column still holds the
+  // full old-style "name + address" blob (see buyerNameAddress's own
+  // comment above for why that must never feed the Name input directly).
+  // looksLikeFullAddress distinguishes the two: a clean name has no
+  // street-shaped content and returns false, so only genuinely name-only
+  // text ever reaches buyerName here.
+  const buyerNameFallback =
+    order.buyer_name_address && !looksLikeFullAddress(order.buyer_name_address) ? order.buyer_name_address.trim() || null : null;
+
+  const buyerTaxId = order.vat_number || order.eori_number || order.ioss_number || order.tax_id || null;
+
   return {
     error: null,
     order: {
       id: order.id,
       refNo: order.ref_no,
-      // Only a real, clean single-line name (dispatch_invoices.buyer_name,
-      // captured post-dispatch) goes into buyerName. Pre-dispatch, there is
-      // no clean name anywhere on this order — leave it null (matching how
-      // address1/city/state/postcode below have always required manual
-      // entry) rather than falling back to the buyer_name_address blob. See
-      // buyerNameAddress above for why that fallback was wrong.
-      buyerName: dispatch?.buyer_name ?? null,
+      // dispatch_invoices.buyer_name wins when a real dispatch exists
+      // (re-booking an already-dispatched order); buyerNameFallback (see
+      // above) covers the far more common pre-dispatch case.
+      buyerName: dispatch?.buyer_name ?? buyerNameFallback,
       buyerNameAddress: order.buyer_name_address,
       buyerMail: dispatch?.buyer_mail ?? order.email_id,
       buyerContact: dispatch?.buyer_contact ?? order.contact_no,
@@ -225,15 +339,16 @@ export async function lookupOrderForCourierBooking(
       // captured at order-entry time and is now used as the fallback, same
       // pattern as the other buyer_* fields.
       buyerCountry: dispatch?.buyer_country ?? order.buyer_country ?? null,
-      buyerAddress1: order.buyer_address1,
-      buyerAddress2: order.buyer_address2,
+      buyerAddress1: parsedFallback ? parsedFallback.address1 || order.buyer_address1 : order.buyer_address1,
+      buyerAddress2: parsedFallback && parsedFallback.address2 ? parsedFallback.address2 : order.buyer_address2,
       buyerAddress3: order.buyer_address3,
-      buyerCity: order.buyer_city,
-      buyerState: order.buyer_state,
-      buyerPostalCode: order.buyer_postal_code,
-      buyerDestinationCountry: order.destination_country,
+      buyerCity: parsedFallback && parsedFallback.city ? parsedFallback.city : order.buyer_city,
+      buyerState: parsedFallback && parsedFallback.state ? parsedFallback.state : order.buyer_state,
+      buyerPostalCode: parsedFallback && parsedFallback.postalCode ? parsedFallback.postalCode : order.buyer_postal_code,
+      buyerDestinationCountry: order.destination_country ?? (parsedFallback && parsedFallback.country ? parsedFallback.country : null),
       hsnNo: dispatch?.hsn_no ?? null,
       skuLabel: order.sku_label,
+      goodsDescription,
       qty: order.qty,
       // 2026-09-09: dispatch_invoices (post-dispatch, resynced from a real
       // order_packages row once a shipment/AWB exists) still wins when
@@ -253,6 +368,7 @@ export async function lookupOrderForCourierBooking(
       alreadyBooked,
       combinedOrderIds: siblingRows.map((s) => s.id),
       combinedRefNos: siblingRows.map((s) => s.ref_no),
+      buyerTaxId,
     },
   };
 }
@@ -680,6 +796,10 @@ export async function createFedexBooking(_prev: CourierBookingCreateState, formD
       contactName: str(formData, "recipient_name"),
       companyName: strOrNull(formData, "recipient_company"),
       phone: str(formData, "recipient_phone"),
+      // 2026-09-10: both new, optional — see SharedShipmentFields' Phone
+      // Ext and Buyer Tax ID inputs (create-shipment-form.tsx) for why.
+      phoneExtension: strOrNull(formData, "recipient_phone_ext"),
+      taxId: strOrNull(formData, "recipient_tax_id"),
       address1: str(formData, "recipient_address1"),
       address2: strOrNull(formData, "recipient_address2"),
       city: str(formData, "recipient_city"),
@@ -781,7 +901,7 @@ export async function createFedexBooking(_prev: CourierBookingCreateState, formD
     revalidatePath("/dashboard/orders");
     return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = withAddressErrorHint(err instanceof Error ? err.message : String(err), formData);
     await logAttempt(supabase, { courier: "fedex", orderId, serviceCode: input.serviceType, ddpDdu: input.ddpDdu, status: "failed", errorMessage: message, createdBy: employee.id });
     await logEntryError(supabase, { companyId: employee.currentCompanyId, source: "courier_api", reason: `FedEx booking failed: ${message}`, referenceType: "order", referenceId: orderId, raisedByEmployeeId: employee.id, raisedByName: employee.name });
     return { ...CREATE_INITIAL, error: message };
@@ -942,7 +1062,7 @@ export async function createUpsBooking(_prev: CourierBookingCreateState, formDat
     revalidatePath("/dashboard/orders");
     return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = withAddressErrorHint(err instanceof Error ? err.message : String(err), formData);
     await logAttempt(supabase, { courier: "ups", orderId, serviceCode: input.serviceCode, ddpDdu: input.ddpDdu, status: "failed", errorMessage: message, createdBy: employee.id });
     await logEntryError(supabase, { companyId: employee.currentCompanyId, source: "courier_api", reason: `UPS booking failed: ${message}`, referenceType: "order", referenceId: orderId, raisedByEmployeeId: employee.id, raisedByName: employee.name });
     return { ...CREATE_INITIAL, error: message };
@@ -1112,7 +1232,7 @@ export async function createAramexBooking(_prev: CourierBookingCreateState, form
     revalidatePath("/dashboard/orders");
     return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = withAddressErrorHint(err instanceof Error ? err.message : String(err), formData);
     await logAttempt(supabase, { courier: "aramex", orderId, serviceCode: input.productType, ddpDdu, status: "failed", errorMessage: message, createdBy: employee.id });
     await logEntryError(supabase, { companyId: employee.currentCompanyId, source: "courier_api", reason: `Aramex booking failed: ${message}`, referenceType: "order", referenceId: orderId, raisedByEmployeeId: employee.id, raisedByName: employee.name });
     return { ...CREATE_INITIAL, error: message };
@@ -1243,7 +1363,7 @@ export async function createDelhiveryBooking(_prev: CourierBookingCreateState, f
     revalidatePath("/dashboard/orders");
     return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = withAddressErrorHint(err instanceof Error ? err.message : String(err), formData);
     await logAttempt(supabase, { courier: "delhivery", orderId, status: "failed", errorMessage: message, createdBy: employee.id });
     await logEntryError(supabase, { companyId: employee.currentCompanyId, source: "courier_api", reason: `Delhivery booking failed: ${message}`, referenceType: "order", referenceId: orderId, raisedByEmployeeId: employee.id, raisedByName: employee.name });
     return { ...CREATE_INITIAL, error: message };
@@ -1395,7 +1515,7 @@ export async function createShiprocketBooking(_prev: CourierBookingCreateState, 
     revalidatePath("/dashboard/orders");
     return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = withAddressErrorHint(err instanceof Error ? err.message : String(err), formData);
     await logAttempt(supabase, { courier: "shiprocket", orderId, status: "failed", errorMessage: message, createdBy: employee.id });
     await logEntryError(supabase, { companyId: employee.currentCompanyId, source: "courier_api", reason: `Shiprocket booking failed: ${message}`, referenceType: "order", referenceId: orderId, raisedByEmployeeId: employee.id, raisedByName: employee.name });
     return { ...CREATE_INITIAL, error: message };
@@ -1567,7 +1687,7 @@ export async function createDhlBooking(_prev: CourierBookingCreateState, formDat
     revalidatePath("/dashboard/orders");
     return { error: null, success: true, trackingNo: result.trackingNo, bookedAmt, bookedCurrency, bookedAmountSource: bookedSource, labelUrl: result.labelUrl ?? null };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = withAddressErrorHint(err instanceof Error ? err.message : String(err), formData);
     await logAttempt(supabase, { courier: "dhl", orderId, serviceCode: input.productCode, ddpDdu, status: "failed", errorMessage: message, createdBy: employee.id });
     await logEntryError(supabase, { companyId: employee.currentCompanyId, source: "courier_api", reason: `DHL booking failed: ${message}`, referenceType: "order", referenceId: orderId, raisedByEmployeeId: employee.id, raisedByName: employee.name });
     return { ...CREATE_INITIAL, error: message };
