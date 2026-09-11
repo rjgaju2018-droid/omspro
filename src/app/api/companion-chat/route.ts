@@ -76,11 +76,11 @@ async function buildHelpArticlesBlock(): Promise<string> {
 // the user asked for ("JISKO IS OMS KE HAR PART KA PATA HOGA").
 function buildSystemPrompt(companionName: string | null, helpArticlesBlock: string): string {
   const name = companionName?.trim() || "the AI Companion";
-  return `You are ${name}, the AI Companion inside OMS Pro, the Order Management System (OMS) — a friendly,
+  return `You are ${name}, the AI Companion inside Nyko Mart's Order Management System (OMS) — a friendly,
 upbeat coworker-style assistant, not a generic chatbot. The employee chatting with you personally named you
 "${name}" — respond to that name naturally if they address you by it.
 
-What you know about OMS Pro (a Next.js + Supabase web app for export/marketplace businesses — Etsy, Amazon, eBay and direct orders):
+What you know about this OMS (a Next.js + Supabase web app for Nyko Mart's Etsy/Amazon/eBay export business):
 - Orders: entry, edit, cancel/hold/return, refunds & credit notes.
 - Courier Booking: FedEx, UPS, Aramex, Delhivery, Shiprocket, DHL — real shipment/AWB booking + tracking.
 - Invoices, Purchase Bills, Credit/Debit Notes, Journal Vouchers.
@@ -156,6 +156,37 @@ export async function POST(req: Request) {
     return NextResponse.json({ reply: reply || "Sorry, I didn't quite get a response there — try again?" });
   } catch (err) {
     console.error("companion-chat error:", err);
+    // 2026-09-09 — "sahi javab nahi deti ya limit issue aajata hai samjh
+    // nahi aaya": before this fix, EVERY Gemini API failure (a real free-
+    // tier rate-limit hit, an invalid/expired key, a genuine outage) fell
+    // through to the same generic "having trouble" reply, so an employee
+    // hitting the free tier's per-minute/per-day quota (a real Gemini 429
+    // RESOURCE_EXHAUSTED — see https://ai.google.dev/gemini-api/docs/rate-limits,
+    // shared across every employee using this one API key) had no way to
+    // tell that apart from a broken bot giving a wrong answer. The
+    // `@google/genai` SDK throws an `ApiError` carrying the real HTTP
+    // `.status`, so classify the failure and reply with the SPECIFIC
+    // reason in Hinglish instead of one generic message for everything.
+    const status = err && typeof err === "object" && "status" in err ? (err as { status?: unknown }).status : undefined;
+    const errText = err instanceof Error ? `${err.name} ${err.message}` : String(err);
+    const isRateLimit = status === 429 || /RESOURCE_EXHAUSTED|rate.?limit|quota/i.test(errText);
+    const isAuthProblem =
+      status === 401 ||
+      status === 403 ||
+      /API key not valid|API_KEY_INVALID|PERMISSION_DENIED|UNAUTHENTICATED/i.test(errText);
+
+    if (isRateLimit) {
+      return NextResponse.json({
+        reply:
+          "Abhi Google AI ki free-tier request-limit khatam ho gayi hai (ek saath bahut saare sawal aa gaye honge) — 1-2 minute ruk kar dobara try karein. Agar yeh baar-baar hota hai, Admin ko batayein: Google AI Studio (aistudio.google.com) mein billing enable karke yeh limit badhayi ja sakti hai.",
+      });
+    }
+    if (isAuthProblem) {
+      return NextResponse.json({
+        reply:
+          "AI chat abhi kaam nahi kar raha — lagta hai GEMINI_API_KEY galat hai ya expire ho gayi hai. Admin ko batayein Vercel ke Environment Variables mein yeh key check/update karein.",
+      });
+    }
     return NextResponse.json({ reply: "Sorry, the AI chat service is having trouble right now — try again in a moment." });
   }
 }
