@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/require-capability";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { daysInMonth, todayIST } from "@/lib/attendance/ist-date";
-import { categorizeMonth, summarizeCategories, computeDeduction } from "@/lib/attendance/payroll";
+import { categorizeMonth, summarizeCategories, summarizeLeaveDetail, computeDeduction } from "@/lib/attendance/payroll";
+import { computeCtcBreakdown } from "@/lib/attendance/statutory";
 
 export type SimpleActionState = { error: string | null; success: boolean };
 
@@ -14,6 +15,16 @@ export type SimpleActionState = { error: string | null; success: boolean };
  * months (already run/reported) keeps using the salary that was actually
  * in effect then, not today's number. See src/lib/attendance/payroll.ts's
  * comment on the deduction convention this feeds into.
+ *
+ * 2026-09-11 (Payroll Phase 1): monthly_salary is now EITHER typed directly
+ * (flat mode, exactly as before) OR auto-computed client-side from a CTC
+ * structure and submitted as the same field (see salary-form.tsx) — this
+ * action doesn't care which; it just stores whatever monthly_salary it
+ * receives, plus the CTC breakdown fields when ctc_mode="true" so
+ * submitSalaryPayment() can later re-derive Employee/Employer PF, ESI, and
+ * Professional Tax for this versioned row. ctc_mode="false" (or a CTC
+ * figure of 0) stores ctc_annual as NULL — the app's own signal that this
+ * row is flat-salary, no statutory breakdown.
  */
 export async function setEmployeeSalary(_prev: SimpleActionState, formData: FormData): Promise<SimpleActionState> {
   const admin = await requireCapability("salary_admin");
@@ -21,10 +32,15 @@ export async function setEmployeeSalary(_prev: SimpleActionState, formData: Form
   const monthlySalary = Number(formData.get("monthly_salary"));
   const allowedLeaves = Number(formData.get("allowed_leaves_per_month") || 1);
   const effectiveFrom = String(formData.get("effective_from") || "").trim();
+  const ctcMode = String(formData.get("ctc_mode") || "") === "true";
+  const ctcAnnualRaw = Number(formData.get("ctc_annual") || 0);
 
   if (!employeeId) return { error: "Employee is required.", success: false };
   if (!monthlySalary || monthlySalary <= 0) return { error: "Monthly salary must be a positive number.", success: false };
   if (!effectiveFrom) return { error: "Effective From date is required.", success: false };
+  if (ctcMode && (!ctcAnnualRaw || ctcAnnualRaw <= 0)) {
+    return { error: "CTC (Annual) must be a positive number when using CTC Structure.", success: false };
+  }
 
   const supabase = createServiceRoleClient();
   const { error } = await supabase.from("employee_salary").insert({
@@ -33,6 +49,17 @@ export async function setEmployeeSalary(_prev: SimpleActionState, formData: Form
     allowed_leaves_per_month: allowedLeaves,
     effective_from: effectiveFrom,
     entered_by_employee_id: admin.id,
+    ctc_annual: ctcMode ? ctcAnnualRaw : null,
+    basic_percent_of_ctc: Number(formData.get("basic_percent_of_ctc") || 50),
+    hra_percent_of_basic: Number(formData.get("hra_percent_of_basic") || 50),
+    employer_pf_percent: Number(formData.get("employer_pf_percent") || 12),
+    employee_pf_percent: Number(formData.get("employee_pf_percent") || 12),
+    pf_wage_ceiling: Number(formData.get("pf_wage_ceiling") || 15000),
+    esi_applicable: ctcMode && String(formData.get("esi_applicable") || "") === "true",
+    esi_employee_percent: Number(formData.get("esi_employee_percent") || 0.75),
+    esi_employer_percent: Number(formData.get("esi_employer_percent") || 3.25),
+    professional_tax_amount: ctcMode ? Number(formData.get("professional_tax_amount") || 0) : 0,
+    pt_state: String(formData.get("pt_state") || "").trim() || null,
   });
   if (error) return { error: error.message, success: false };
   revalidatePath("/dashboard/salary");
@@ -178,19 +205,28 @@ export async function submitSalaryPayment(_prev: FinanceActionState, formData: F
     supabase.from("companies").select("weekly_off_days").eq("id", emp.company_id).single(),
     supabase
       .from("employee_salary")
-      .select("monthly_salary, allowed_leaves_per_month, effective_from")
+      .select(
+        "monthly_salary, allowed_leaves_per_month, effective_from, ctc_annual, basic_percent_of_ctc, hra_percent_of_basic, employer_pf_percent, employee_pf_percent, pf_wage_ceiling, esi_applicable, esi_employee_percent, esi_employer_percent, professional_tax_amount"
+      )
       .eq("employee_id", employeeId)
       .lte("effective_from", monthEnd)
       .order("effective_from", { ascending: false })
       .limit(1),
-    supabase.from("attendance").select("attendance_date, status").eq("employee_id", employeeId).gte("attendance_date", monthStart).lte("attendance_date", monthEnd),
+    supabase
+      .from("attendance")
+      .select("attendance_date, status, leave_type_id, leave_unpaid")
+      .eq("employee_id", employeeId)
+      .gte("attendance_date", monthStart)
+      .lte("attendance_date", monthEnd),
     supabase.from("holidays").select("holiday_date").or(`company_id.eq.${emp.company_id},company_id.is.null`).gte("holiday_date", monthStart).lte("holiday_date", monthEnd),
   ]);
 
   const salary = salaryRows?.[0];
   if (!salary) return { error: "No salary set for this employee yet — set it above first.", success: false };
 
-  const attendanceByDate = new Map((attendanceRows ?? []).map((r) => [r.attendance_date, { status: r.status }]));
+  const attendanceByDate = new Map(
+    (attendanceRows ?? []).map((r) => [r.attendance_date, { status: r.status, leave_type_id: r.leave_type_id, leave_unpaid: r.leave_unpaid }])
+  );
   const holidayDates = new Set((holidays ?? []).map((h) => h.holiday_date));
   const days = categorizeMonth({
     year,
@@ -208,12 +244,57 @@ export async function submitSalaryPayment(_prev: FinanceActionState, formData: F
     joinDate: emp.date_of_joining,
   });
   const summary = summarizeCategories(days);
+  // 2026-09-11 (Payroll Phase 2): same untyped/typed-paid/typed-unpaid
+  // split as the payroll preview (salary/page.tsx) — this is the
+  // AUTHORITATIVE recompute that actually gets snapshotted onto the
+  // payment row, so it must agree with what leave/actions.ts decided at
+  // approval time, never re-derive it differently.
+  const leaveDetail = summarizeLeaveDetail(days);
   const deduction = computeDeduction({
     monthlySalary: Number(salary.monthly_salary),
     allowedLeavesPerMonth: Number(salary.allowed_leaves_per_month),
     daysInThisMonth: daysInMonth(year, month),
     counts: summary,
+    untypedLeaveDays: leaveDetail.untypedLeaveDays,
+    unpaidTypedLeaveDays: leaveDetail.unpaidTypedLeaveDays,
   });
+
+  // 2026-09-11 (Payroll Phase 1): when the salary row in effect for this
+  // month has a CTC structure (ctc_annual set — see setEmployeeSalary
+  // above), re-derive the same breakdown here server-side (never trust a
+  // client-submitted PF/ESI/PT figure) and snapshot it into this payment
+  // row. A flat-salary (non-CTC) employee gets all-zero statutory amounts,
+  // exactly as before this round — nothing changes for them.
+  let basicAmount: number | null = null;
+  let hraAmount: number | null = null;
+  let specialAllowanceAmount: number | null = null;
+  let employeePfAmount = 0;
+  let employerPfAmount = 0;
+  let employeeEsiAmount = 0;
+  let employerEsiAmount = 0;
+  let professionalTaxAmount = 0;
+  if (salary.ctc_annual) {
+    const breakdown = computeCtcBreakdown({
+      ctcAnnual: Number(salary.ctc_annual),
+      basicPercentOfCtc: Number(salary.basic_percent_of_ctc),
+      hraPercentOfBasic: Number(salary.hra_percent_of_basic),
+      employerPfPercent: Number(salary.employer_pf_percent),
+      employeePfPercent: Number(salary.employee_pf_percent),
+      pfWageCeiling: Number(salary.pf_wage_ceiling),
+      esiApplicable: salary.esi_applicable,
+      esiEmployeePercent: Number(salary.esi_employee_percent),
+      esiEmployerPercent: Number(salary.esi_employer_percent),
+      professionalTaxAmount: Number(salary.professional_tax_amount),
+    });
+    basicAmount = breakdown.basic;
+    hraAmount = breakdown.hra;
+    specialAllowanceAmount = breakdown.specialAllowance;
+    employeePfAmount = breakdown.employeePf;
+    employerPfAmount = breakdown.employerPf;
+    employeeEsiAmount = breakdown.esiEmployee;
+    employerEsiAmount = breakdown.esiEmployer;
+    professionalTaxAmount = breakdown.professionalTax;
+  }
 
   // Advance recovery — always against the SINGLE oldest still-outstanding
   // advance (simplest correct v1: a later payment keeps recovering the
@@ -246,6 +327,14 @@ export async function submitSalaryPayment(_prev: FinanceActionState, formData: F
       attendance_deduction_amount: deduction.deductionAmount,
       advance_deduction_amount: advanceDeduction,
       advance_id: advanceId,
+      basic_amount: basicAmount,
+      hra_amount: hraAmount,
+      special_allowance_amount: specialAllowanceAmount,
+      employee_pf_amount: employeePfAmount,
+      employer_pf_amount: employerPfAmount,
+      employee_esi_amount: employeeEsiAmount,
+      employer_esi_amount: employerEsiAmount,
+      professional_tax_amount: professionalTaxAmount,
       payment_date: paymentDate,
       paid_by_employee_id: admin.id,
       remark,
