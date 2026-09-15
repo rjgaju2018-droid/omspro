@@ -10,6 +10,10 @@ import {
   buildSummaryText,
   shareOnWhatsApp,
 } from "@/lib/export/export-table";
+// 2026-09-15 — Telegram share + print-orientation support ("jis jis jagh
+// par print save document ka option hai vaha telegram whatsaap, email ka
+// option bhi ho ... portrait & landscape me ho"). One shared helper.
+import { printWithOrientation, telegramShare } from "@/lib/export/share-helpers";
 
 // Reusable export/send toolbar — item 6 (Universal Reports/Export/Send
 // system). Drop this under ANY report/list once you have { columns, rows }
@@ -35,6 +39,7 @@ export function ExportBar<T>({
   rows,
   printAreaId,
   whatsappPhone,
+  orientation = "portrait",
   allColumns,
   hiddenKeys,
   onToggleColumn,
@@ -47,6 +52,8 @@ export function ExportBar<T>({
   printAreaId?: string;
   /** Optional phone number to pre-fill the wa.me fallback (e.g. a buyer's contact_no when the report is buyer-specific). */
   whatsappPhone?: string | null;
+  /** 2026-09-15 — "portrait & landscape me ho": A4 orientation for the printed/PDF output. */
+  orientation?: "portrait" | "landscape" | "both";
   /** Full column list (unfiltered) — pass alongside hiddenKeys/onToggleColumn to show the "Columns" picker. Omit to hide the picker entirely. */
   allColumns?: ExportColumn<T>[];
   /** Set of column `key`s currently hidden — from useColumnVisibility(). */
@@ -115,7 +122,11 @@ export function ExportBar<T>({
         ⬇️ Word
       </button>
       {printAreaId && (
-        <button type="button" className={btnClass} onClick={() => window.print()}>
+        <button
+          type="button"
+          className={btnClass}
+          onClick={() => printWithOrientation(printAreaId, orientation, title)}
+        >
           🖨️ PDF / Print
         </button>
       )}
@@ -137,6 +148,14 @@ export function ExportBar<T>({
         }
       >
         📱 WhatsApp
+      </button>
+      <button
+        type="button"
+        className={btnClass}
+        disabled={!rows.length}
+        onClick={() => telegramShare(title, buildSummaryText(title, columns, rows))}
+      >
+        ✈️ Telegram
       </button>
       {notice && <span className="text-xs text-slate-400">{notice}</span>}
     </div>

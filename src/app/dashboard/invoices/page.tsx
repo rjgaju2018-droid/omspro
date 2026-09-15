@@ -66,7 +66,7 @@ export default async function InvoicesPage() {
         .eq("company_id", employee.currentCompanyId)
         .order("created_at", { ascending: false })
         .limit(100),
-      supabase.from("companies").select("id, name").in("id", employee.companyIds),
+      supabase.from("companies").select("id, name, preferences").in("id", employee.companyIds),
       supabase.from("stores").select("id, name, company_id, invoice_ref_prefix"),
       supabase.from("item_categories").select("id, name"),
     ]);
@@ -114,6 +114,15 @@ export default async function InvoicesPage() {
             orders: b.orders,
           }))}
           itemCategoryName={itemCategoryName}
+          defaultShipmentTerm={
+            (() => {
+              const prefs = (companies ?? []).find((c) => c.id === employee.currentCompanyId)?.preferences as
+                | { default_inco_term?: string; booking_mode?: string }
+                | null
+                | undefined;
+              return prefs?.default_inco_term ?? "";
+            })()
+          }
         />
       </div>
 

@@ -23,7 +23,7 @@
 // checkboxes now operate per GROUP (selecting a grouped row selects every
 // underlying bill id), so the bulk bar still works across several
 // different invoices/parties at once exactly as before.
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { groupBills, type BillGroup } from "@/lib/bill-grouping";
 import {
@@ -35,6 +35,11 @@ import {
 import { groupPartyOptions, type PartyOption } from "../documents/party-options";
 import { RelatedNotesBadge } from "../documents/related-notes-badge";
 import type { RelatedNote } from "../documents/actions";
+// 2026-09-15 — "sabhi bill payment ho jata hai to ek dilog box open hoye
+// send update ka whatsaap telegram, email": after a successful payment the
+// form offers a one-click send-update dialog with the bill details + the
+// orders (PO refs) it covers, exactly like the AWB-assignment report.
+import { PaymentUpdateDialog } from "./payment-update-dialog";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500";
@@ -433,10 +438,28 @@ function PerBillAmountForm({
 }) {
   const [state, formAction, pending] = useActionState(recordBulkBillPayment, initialBulkState);
   const total = bills.reduce((s, b) => s + b.balance_due, 0);
+  // 2026-09-15 — one-shot "send update" dialog state: appears after a
+  // fully-successful save (see below) with pre-built WhatsApp/Telegram/
+  // Email drafts for exactly the bills just paid.
+  const [updateFor, setUpdateFor] = useState<{ bills: PayableBillRow[]; amounts: Map<string, number>; paymentDate: string; mode: string; reference: string } | null>(null);
+  const formDataRef = useRef<HTMLFormElement | null>(null);
 
   return (
     <div className={sticky ? "sticky bottom-3 mt-3 rounded-xl border border-amber-300 bg-white p-3 shadow-lg" : "rounded-xl border border-amber-200 bg-white p-3"}>
-      <form action={formAction} className="space-y-2">
+      <form
+        ref={formDataRef}
+        action={(fd: FormData) => {
+          // Capture what the user entered BEFORE the action runs so the
+          // success dialog can quote the real payment date/mode/reference.
+          const date = String(fd.get("payment_date") ?? "");
+          const mode = String(fd.get("payment_mode") ?? "");
+          const reference = String(fd.get("reference_no") ?? "");
+          const amounts = new Map<string, number>(bills.map((b) => [b.id, Number(fd.get(`amount_${b.id}`) ?? b.balance_due)]));
+          setUpdateFor({ bills, amounts, paymentDate: date, mode, reference });
+          formAction(fd);
+        }}
+        className="space-y-2"
+      >
         <input type="hidden" name="bill_ids_json" value={JSON.stringify(bills.map((b) => b.id))} />
 
         <div className="flex items-center justify-between">
@@ -456,9 +479,20 @@ function PerBillAmountForm({
                 {r.ok ? "✓" : "✗"} {r.label} {r.error ? `— ${r.error}` : ""}
               </p>
             ))}
-            <button type="button" onClick={onDone} className="mt-1 rounded border border-green-300 bg-white px-2 py-0.5 font-medium text-green-700 hover:bg-green-50">
-              Done
-            </button>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {updateFor && (
+                <PaymentUpdateDialog
+                  bills={updateFor.bills}
+                  amounts={updateFor.amounts}
+                  paymentDate={updateFor.paymentDate}
+                  paymentMode={updateFor.mode}
+                  referenceNo={updateFor.reference}
+                />
+              )}
+              <button type="button" onClick={onDone} className="rounded border border-green-300 bg-white px-2 py-0.5 font-medium text-green-700 hover:bg-green-50">
+                Done
+              </button>
+            </div>
           </div>
         )}
 

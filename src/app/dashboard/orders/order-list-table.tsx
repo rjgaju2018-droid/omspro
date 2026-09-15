@@ -140,6 +140,8 @@ export function OrderListTable({
   etsyFeesByOrder,
   ebayFeesByOrder,
   amazonFeesByOrder,
+  invoicesByOrder,
+  onPreviewInvoice,
 }: {
   orders: OrderRow[];
   itemCategories: { id: string; name: string }[];
@@ -158,6 +160,10 @@ export function OrderListTable({
   etsyFeesByOrder: Record<string, EtsyFeeMatch>;
   ebayFeesByOrder: Record<string, EbayFeeMatch>;
   amazonFeesByOrder: Record<string, AmazonFeeMatch>;
+  /** 2026-09-15 — order id -> { id, invoice_no } for orders with a sales invoice, so the Invoice No. column can render as an in-page preview link. */
+  invoicesByOrder: Record<string, { id: string; invoice_no: string | null }>;
+  /** Opens the in-page invoice preview dialog (never a new window). */
+  onPreviewInvoice: (invoiceId: string) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -294,6 +300,31 @@ export function OrderListTable({
       tdClass: "whitespace-nowrap font-semibold text-slate-900",
       filterValue: (o) => o.ref_no ?? "",
       cell: (o) => o.ref_no,
+    },
+    {
+      // 2026-09-15 — "invoice no show hota hai to link hona chahiye invoice
+      // dikh jaye ... diloge box me alag window me nahi": the invoice number
+      // is a button that opens the in-page preview dialog. Access is still
+      // enforced server-side by the preview endpoint.
+      key: "invoiceNo",
+      label: "Invoice No.",
+      filter: "text",
+      tdClass: "whitespace-nowrap",
+      filterValue: (o) => invoicesByOrder[o.id]?.invoice_no ?? "",
+      cell: (o) => {
+        const inv = invoicesByOrder[o.id];
+        if (!inv) return <span className="text-slate-300">—</span>;
+        return (
+          <button
+            type="button"
+            onClick={() => onPreviewInvoice(inv.id)}
+            className="rounded-md bg-blue-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-blue-700 transition hover:bg-blue-100"
+            title="Preview this invoice"
+          >
+            {inv.invoice_no ?? "View"}
+          </button>
+        );
+      },
     },
     {
       key: "poDate",

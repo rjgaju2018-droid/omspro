@@ -3,6 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PrintArea } from "@/components/print-view";
+// 2026-09-15 — Universal ShareBar: Print/Save-PDF/Word/Email/WhatsApp/
+// Telegram on every document page (see share-bar.tsx).
+import { ShareBar } from "@/components/share/share-bar";
 import { updateInvoiceFields, deleteInvoice } from "../actions";
 import { originDeclarationFor } from "@/lib/invoices/origin-declaration";
 import { itemCostForOrder } from "@/lib/invoices/value-breakdown";
@@ -489,6 +492,29 @@ export function InvoiceView({
             Print / Save as PDF
           </button>
         </div>
+
+        {/* 2026-09-15 — send-anywhere bar (Email/WhatsApp/Telegram/Word),
+            invoice portrait by default. Summary built from live fields so
+            what gets sent matches what's on screen. */}
+        <ShareBar
+          printAreaId="invoice-print-area"
+          fileName={`Invoice-${invoice.invoice_no}`}
+          title={`Export Invoice ${invoice.invoice_no}`}
+          orientation="portrait"
+          emailSubject={`Export Invoice ${invoice.invoice_no}`}
+          emailTo={invoice.buyer_email ?? undefined}
+          summaryText={[
+            `Invoice: ${invoice.invoice_no}`,
+            `Date: ${invoice.invoice_date}`,
+            `Store: ${storeName}`,
+            `Destination: ${invoice.destination_country ?? "—"}`,
+            `Shipment term: ${invoice.shipment_term}`,
+            `Value: ${invoice.invoice_value_usd ?? "—"} USD`,
+            items.length ? `Items: ${items.length} order(s)` : "",
+          ]
+            .filter(Boolean)
+            .join("\n")}
+        />
 
         <div>
           <button

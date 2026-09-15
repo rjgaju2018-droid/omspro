@@ -57,7 +57,11 @@ export function CertificateForm({ employees, companies }: { employees: Employee[
   const [employeeName, setEmployeeName] = useState("");
   const [bodyText, setBodyText] = useState(occasion.body);
   const [hrName, setHrName] = useState("");
-  const [directorName, setDirectorName] = useState("RD Lohra");
+  // 2026-09-15 — signatory names are NEVER hardcoded to a person/company
+  // ("RD Lohra / Nyko Mart ... ye sab client par depend karega"): they start
+  // empty and the company name shown everywhere comes from the selected
+  // companies row, so every client's own workspace prints its own names.
+  const [directorName, setDirectorName] = useState("");
   const [dateIssued, setDateIssued] = useState(todayFormatted());
   const [companyId, setCompanyId] = useState("");
 

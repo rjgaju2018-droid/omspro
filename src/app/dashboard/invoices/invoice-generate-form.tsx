@@ -4,6 +4,11 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import { generateInvoice, type InvoiceFormState } from "./actions";
 
+// 2026-09-15 — "invoice me terms add kar dena ki shipment CIF, CFR, CF, DDP
+// jese option me jayegi usi parkar program banana": the Shipment Term field
+// is now a select of standard Inco terms (free-text preserved via "Other").
+const INCO_TERMS = ["CIF", "CFR", "CF", "DDP", "DDU", "FOB", "EXW", "FCA", "CPT", "CIP", "DAP", "DPU"];
+
 const initialState: InvoiceFormState = { error: null, success: null };
 
 const inputClass =
@@ -13,12 +18,17 @@ const labelClass = "mb-1 block text-xs font-medium text-slate-500";
 export function InvoiceGenerateForm({
   orderIds,
   defaultBuyerNameAddress,
+  defaultShipmentTerm = "",
 }: {
   orderIds: string[];
   defaultBuyerNameAddress: string;
+  /** 2026-09-15 — the company's default_inco_term preference, pre-selected. */
+  defaultShipmentTerm?: string;
 }) {
   const [state, formAction, pending] = useActionState(generateInvoice, initialState);
   const [csbType, setCsbType] = useState("");
+  const [term, setTerm] = useState(defaultShipmentTerm);
+  const [customTerm, setCustomTerm] = useState("");
   const isCsbIv = csbType === "CSB-IV";
 
   if (state.success) {
@@ -43,8 +53,32 @@ export function InvoiceGenerateForm({
           <input id="invoice_date" name="invoice_date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className={inputClass} />
         </div>
         <div>
-          <label className={labelClass} htmlFor="shipment_term">Shipment Term *</label>
-          <input id="shipment_term" name="shipment_term" required placeholder="DDP / DDU / FOB / ..." className={inputClass} />
+          <label className={labelClass} htmlFor="shipment_term">Shipment Term (Inco) *</label>
+          <select
+            id="shipment_term"
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            required
+            className={inputClass}
+          >
+            <option value="">Choose…</option>
+            {INCO_TERMS.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+            <option value="__custom">Other…</option>
+          </select>
+          {term === "__custom" && (
+            <input
+              id="shipment_term_custom"
+              value={customTerm}
+              onChange={(e) => setCustomTerm(e.target.value)}
+              required
+              placeholder="Type the exact term"
+              className={`${inputClass} mt-1.5`}
+            />
+          )}
+          {term !== "__custom" && <input type="hidden" name="shipment_term" value={term} />}
+          {term === "__custom" && <input type="hidden" name="shipment_term" value={customTerm} />}
         </div>
         <div>
           <label className={labelClass} htmlFor="csb_type">CSB Type *</label>

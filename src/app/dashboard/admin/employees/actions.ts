@@ -196,7 +196,7 @@ export async function createEmployee(_prev: EmployeeFormState, formData: FormDat
   await notifyCompanion(supabase, {
     employeeId: employee.id,
     eventType: "new_employee",
-    message: `Welcome to the team, ${name}! Your ID is ready — ab to party to banti hai! 🎉`,
+    message: `Welcome to the team, ${name}! Your ID is ready — time to celebrate! 🎉`,
   });
   return { error: null, success: { email } };
 }

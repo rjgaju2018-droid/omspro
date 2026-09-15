@@ -38,6 +38,15 @@ export function IssuedLetterView({ letter, company }: { letter: IssuedLetter; co
     bodyText: letter.bodyText,
     signatoryName: letter.signatoryName ?? undefined,
     signatoryDesignation: letter.signatoryDesignation ?? undefined,
+    // 2026-09-15 — new letterhead format on re-exports too (company data is
+    // passed in live from company_profiles, so an updated address/phone
+    // still prints correctly on a re-download).
+    letterhead: {
+      logoUrl: company.logoUrl,
+      address: company.address,
+      phone: company.phone,
+      email: company.email,
+    },
   };
   const filenameBase = `${letter.refNo || "letter"}-${letter.employeeName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 

@@ -41,13 +41,13 @@ export function PolicyHandbookViewer({ companies }: { companies: Company[] }) {
         </button>
         <button
           type="button"
-          onClick={() => downloadLetterDoc(filenameBase, { companyName, refNo: "", dateIssued: "", bodyText: policyHandbookText(companyName) })}
+          onClick={() => downloadLetterDoc(filenameBase, { companyName, refNo: "", dateIssued: "", bodyText: policyHandbookText(companyName), letterhead: { logoUrl: company?.logo_url ?? null } })}
           className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           ⬇️ Word
         </button>
         <a
-          href={mailtoLetterLink(`${companyName} — Company Policy Handbook`, { companyName, refNo: "", dateIssued: "", bodyText: policyHandbookText(companyName) })}
+          href={mailtoLetterLink(`${companyName} — Company Policy Handbook`, { companyName, refNo: "", dateIssued: "", bodyText: policyHandbookText(companyName), letterhead: { logoUrl: company?.logo_url ?? null } })}
           className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           ✉️ Email
@@ -60,6 +60,7 @@ export function PolicyHandbookViewer({ companies }: { companies: Company[] }) {
               refNo: "",
               dateIssued: "",
               bodyText: policyHandbookText(companyName),
+              letterhead: { logoUrl: company?.logo_url ?? null },
             })
           }
           className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

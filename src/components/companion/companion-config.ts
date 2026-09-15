@@ -76,7 +76,7 @@ export const COMPANION_STATES: CompanionStateConfig[] = [
     // karegi ... ab to party to banti hai"). Bollywood-arms + hip-sway pose.
     id: "dance",
     buttonLabel: "Simulate: Dance",
-    label: "Party Time!",
+    label: "Celebrate!",
     moodTag: "Dancing & celebrating",
     signal: "Real signal: birthday, work anniversary, or a brand-new employee ID",
     auraColor: "#ec4899",

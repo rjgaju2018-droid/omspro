@@ -3,7 +3,10 @@ import { requireCapability } from "@/lib/auth/require-capability";
 import { createClient } from "@/lib/supabase/server";
 import { getOrderStatusSummaries } from "@/lib/orders/order-status-summary";
 import { matchMarketplaceFees } from "@/lib/orders/marketplace-fees";
-import { OrderListTable } from "./order-list-table";
+// 2026-09-15 — replaced the raw OrderListTable with a client wrapper that
+// owns the in-page invoice-preview dialog (invoice numbers in the list are
+// now preview links).
+import { OrdersTableWithPreview } from "./orders-table-with-preview";
 
 const STATUSES = ["Pending", "Confirmed", "In Production", "Dispatched", "Delivered", "Hold", "Cancelled", "Returned"];
 
@@ -129,7 +132,7 @@ export default async function OrdersPage({
   // instead of a second hand-copied version drifting out of sync over
   // time. No behavior change here — same queries, same company scoping,
   // same normalizeOrderNo() (now imported from that shared module).
-  const [{ data: refunds }, marketplaceFees, statusByOrder] = await Promise.all([
+  const [{ data: refunds }, marketplaceFees, statusByOrder, { data: invoiceLinks }] = await Promise.all([
     orderIds.length
       ? supabase
           .from("order_refunds")
@@ -146,6 +149,11 @@ export default async function OrdersPage({
         final_tracking: o.final_tracking,
       }))
     ),
+    // 2026-09-15 — invoice numbers for the list's new preview-link column:
+    // one cheap query for orders that have an invoice_id.
+    orderIds.length
+      ? supabase.from("sales_invoices").select("id, invoice_no").in("id", (orders ?? []).map((o) => o.invoice_id).filter((v): v is string => !!v))
+      : { data: [] },
   ]);
   const { etsyFeesByOrder, ebayFeesByOrder, amazonFeesByOrder } = marketplaceFees;
 
@@ -161,6 +169,15 @@ export default async function OrdersPage({
       date: r.refund_date,
       hasCreditNote: !!r.credit_note_id,
     });
+  }
+
+  // order id -> invoice id/no, for the Invoice No. preview-link column.
+  const invoiceNoById = new Map((invoiceLinks ?? []).map((i) => [i.id, i.invoice_no]));
+  const invoicesByOrder: Record<string, { id: string; invoice_no: string | null }> = {};
+  for (const o of orders ?? []) {
+    if (o.invoice_id && invoiceNoById.has(o.invoice_id)) {
+      invoicesByOrder[o.id] = { id: o.invoice_id, invoice_no: invoiceNoById.get(o.invoice_id) ?? null };
+    }
   }
 
   // 2026-08-13 — "store par jab order aaya to kon kon si fee lagi vo uske
@@ -243,7 +260,7 @@ export default async function OrdersPage({
         <Link href="/dashboard/orders" className="text-xs text-slate-400 underline">Clear</Link>
       </form>
 
-      <OrderListTable
+      <OrdersTableWithPreview
         orders={orders ?? []}
         itemCategories={itemCategories ?? []}
         sizes={sizes ?? []}
@@ -257,6 +274,7 @@ export default async function OrdersPage({
         etsyFeesByOrder={etsyFeesByOrder}
         ebayFeesByOrder={ebayFeesByOrder}
         amazonFeesByOrder={amazonFeesByOrder}
+        invoicesByOrder={invoicesByOrder}
       />
     </div>
   );

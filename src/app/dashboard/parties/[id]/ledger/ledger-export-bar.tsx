@@ -51,6 +51,7 @@ export function LedgerExportBar({
       columns={COLUMNS}
       rows={rows}
       printAreaId={printAreaId}
+      orientation="landscape"
     />
   );
 }

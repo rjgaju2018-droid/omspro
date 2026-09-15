@@ -22,8 +22,8 @@ function eventTypeFor(kind: Celebration["kind"]): "birthday" | "work_anniversary
 }
 
 function messageFor(c: Celebration): string {
-  if (c.kind === "birthday") return `Happy Birthday ${c.name}! 🎂 Ab to party to banti hai! 🥳`;
-  if (c.kind === "anniversary") return `Happy Wedding Anniversary ${c.name}! 💐 Ab to party to banti hai! 🥳`;
+  if (c.kind === "birthday") return `Happy Birthday ${c.name}! 🎂 Time to celebrate! 🥳`;
+  if (c.kind === "anniversary") return `Happy Wedding Anniversary ${c.name}! 💐 Time to celebrate! 🥳`;
   return `Happy Work Anniversary ${c.name} — ${c.years ?? 1} year${(c.years ?? 1) === 1 ? "" : "s"} at the company! 🎉 Ab to party to banti hai! 🥳`;
 }
 

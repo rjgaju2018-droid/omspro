@@ -94,9 +94,12 @@ const STATUS_LABEL: Record<BatchStatus, string> = {
 export function InvoicePoSelector({
   batches,
   itemCategoryName,
+  defaultShipmentTerm = "",
 }: {
   batches: Batch[];
   itemCategoryName: Record<string, string>;
+  /** 2026-09-15 — company preference default_inco_term, passed through to the form. */
+  defaultShipmentTerm?: string;
 }) {
   const [query, setQuery] = useState("");
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -292,6 +295,7 @@ export function InvoicePoSelector({
                 <InvoiceGenerateForm
                   orderIds={pendingOrders.map((o) => o.id)}
                   defaultBuyerNameAddress={pendingOrders[0] ? composeBuyerNameAndAddress(pendingOrders[0]) : ""}
+                  defaultShipmentTerm={defaultShipmentTerm}
                 />
               </>
             )}

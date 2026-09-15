@@ -39,10 +39,24 @@ export type LetterDocInput = {
   bodyText: string;
   signatoryName?: string;
   signatoryDesignation?: string;
+  // 2026-09-15 — the modern letterhead block (new format, per the user's
+  // reference: brand mark + company line + address/phone/web columns + a
+  // ref/date bar + navy footer). Everything optional — a workspace that
+  // hasn't filled company_profiles yet still prints cleanly.
+  letterhead?: {
+    logoUrl?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    website?: string | null;
+    /** Legal entity line under the brand, e.g. "XYZ Pvt. Ltd." */
+    entityLine?: string | null;
+  };
 };
 
 function buildLetterHtml(input: LetterDocInput): string {
   const bodyHtml = escapeHtml(input.bodyText).replace(/\n/g, "<br>");
+  const lh = input.letterhead;
   const signatureHtml =
     input.signatoryName || input.signatoryDesignation
       ? `<div style="margin-top:40px;">` +
@@ -50,18 +64,48 @@ function buildLetterHtml(input: LetterDocInput): string {
         (input.signatoryDesignation ? `<div style="font-size:11px;color:#555;">(${escapeHtml(input.signatoryDesignation)})</div>` : "") +
         `</div>`
       : "";
+
+  // Modern letterhead: navy brand bar with logo + wordmark, contact column
+  // on the right (the reference layout), then the content on white.
+  const letterheadHtml = lh
+    ? `<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #16325c;padding-bottom:14px;margin-bottom:18px;">` +
+      `<div style="display:flex;align-items:center;gap:12px;">` +
+      (lh.logoUrl
+        ? `<img src="${escapeHtml(lh.logoUrl)}" alt="" style="height:52px;width:auto;border-radius:8px;" />`
+        : `<div style="height:52px;width:52px;border-radius:10px;background:#16325c;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:20px;">${escapeHtml(input.companyName.slice(0, 1))}</div>`) +
+      `<div>` +
+      `<div style="font-size:19px;font-weight:800;color:#16325c;letter-spacing:0.5px;">${escapeHtml(input.companyName)}</div>` +
+      (lh.entityLine ? `<div style="font-size:10px;color:#6b7280;">${escapeHtml(lh.entityLine)}</div>` : "") +
+      `</div></div>` +
+      `<div style="text-align:right;font-size:10px;color:#374151;line-height:1.5;">` +
+      (lh.address ? `<div>${escapeHtml(lh.address)}</div>` : "") +
+      (lh.phone ? `<div>Tel: ${escapeHtml(lh.phone)}</div>` : "") +
+      (lh.email ? `<div>${escapeHtml(lh.email)}</div>` : "") +
+      (lh.website ? `<div style="font-weight:600;color:#16325c;">${escapeHtml(lh.website)}</div>` : "") +
+      `</div></div>`
+    : `<div style="margin-bottom:16px;"><strong style="font-size:16px;">${escapeHtml(input.companyName)}</strong></div>`;
+
+  // Navy footer strip (matches the reference letterhead's bottom band).
+  const footerHtml =
+    `<div style="margin-top:48px;border-top:2px solid #16325c;padding-top:8px;font-size:9px;color:#6b7280;display:flex;justify-content:space-between;">` +
+    `<span>${escapeHtml(input.companyName)}</span>` +
+    (lh?.phone ? `<span>${escapeHtml(lh.phone)}</span>` : "") +
+    (lh?.email ? `<span>${escapeHtml(lh.email)}</span>` : "") +
+    `</div>`;
+
   return (
     `<html><head><meta charset="utf-8"><title>${escapeHtml(input.companyName)}</title></head>` +
-    `<body style="font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#111;">` +
-    `<div style="margin-bottom:16px;"><strong style="font-size:16px;">${escapeHtml(input.companyName)}</strong></div>` +
+    `<body style="font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#111;max-width:800px;margin:0 auto;padding:24px;">` +
+    letterheadHtml +
     (input.refNo || input.dateIssued
-      ? `<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:bold;margin-bottom:12px;">` +
+      ? `<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:bold;margin-bottom:14px;">` +
         `<span>Ref No.: ${escapeHtml(input.refNo || "—")}</span><span>Date: ${escapeHtml(input.dateIssued)}</span></div>`
       : "") +
     (input.toLine ? `<div style="margin-bottom:12px;white-space:pre-line;">${escapeHtml(input.toLine)}</div>` : "") +
     (input.subjectLine ? `<div style="margin-bottom:12px;font-weight:bold;">${escapeHtml(input.subjectLine)}</div>` : "") +
     `<div style="line-height:1.6;white-space:pre-wrap;">${bodyHtml}</div>` +
     signatureHtml +
+    footerHtml +
     `</body></html>`
   );
 }

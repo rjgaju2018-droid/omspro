@@ -143,6 +143,15 @@ export function LetterForm({
     bodyText: bodyText || "",
     signatoryName,
     signatoryDesignation,
+    // 2026-09-15 — the new modern letterhead (brand mark + contact column +
+    // navy footer) now flows into the Word/Email/WhatsApp exports too, not
+    // just the on-screen print preview — same company data either way.
+    letterhead: {
+      logoUrl: company?.logo_url ?? null,
+      address: profile?.address ?? null,
+      phone: profile?.phone ?? null,
+      email: profile?.email ?? null,
+    },
   };
   const filenameBase = `${template.slug}-${(employeeName || "letter").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
@@ -326,20 +335,30 @@ export function LetterForm({
             minimum — screen preview is unchanged, the printed/PDF page now
             sizes to the real content. */}
         <div className="mx-auto min-h-[1000px] w-full bg-white p-10 text-sm text-slate-900 shadow-sm print:min-h-0" style={{ fontFamily: "Georgia, serif" }}>
-          <div className="mb-6 flex items-center gap-4 border-b border-slate-300 pb-4">
-            {company?.logo_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={company.logo_url} alt={company.name} className="h-14 w-14 object-contain" />
-            )}
-            <div>
-              <div className="text-lg font-bold">{company?.name ?? "Select company"}</div>
-              <div className="text-xs text-slate-500">
-                {[profile?.address, profile?.phone, profile?.email].filter(Boolean).join(" | ")}
+          {/* 2026-09-15 — new letterhead format (matches letter-export.ts's
+              exported Word/Email versions): navy brand bar with logo +
+              contact column on the right, navy ref/date bar below. */}
+          <div className="mb-5 flex items-start justify-between border-b-[3px] pb-3" style={{ borderColor: "#16325c" }}>
+            <div className="flex items-center gap-3">
+              {company?.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={company.logo_url} alt={company.name} className="h-14 w-auto rounded-lg object-contain" />
+              ) : (
+                <div className="flex h-14 w-14 items-center justify-center rounded-lg text-xl font-bold text-white" style={{ backgroundColor: "#16325c" }}>
+                  {(company?.name ?? "C").slice(0, 1)}
+                </div>
+              )}
+              <div>
+                <div className="text-xl font-extrabold tracking-wide" style={{ color: "#16325c" }}>{company?.name ?? "Select company"}</div>
               </div>
             </div>
+            <div className="text-right text-[10px] leading-relaxed text-slate-600">
+              {profile?.address && <div>{profile.address}</div>}
+              {profile?.phone && <div>Tel: {profile.phone}</div>}
+              {profile?.email && <div>{profile.email}</div>}
+            </div>
           </div>
-
-          <div className="mb-4 flex justify-between text-xs font-semibold">
+          <div className="mb-4 flex items-center justify-between text-xs font-bold">
             <span>Ref No.: {refNo || "—"}</span>
             <span>Date: {dateIssued}</span>
           </div>
