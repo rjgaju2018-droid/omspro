@@ -24,7 +24,12 @@
 //     changed what needs JS: the event popup's position + direction)
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { CompanionCharacter } from "./companion-character";
+// 2026-09-12 — photo-first portrait: renders the user-supplied assistant
+// photo (public/companion/assistant-photo.png) and falls back to the
+// hand-drawn SVG only if that file is missing. Same rules as before —
+// daily outfit/makeup rotation still drive the SVG fallback, and the
+// Admin-generated DB photo (companionImageUrl) still wins when present.
+import { AssistantPortrait } from "./assistant-photo";
 import { CompanionChatPanel } from "./companion-chat-panel";
 import {
   EVENT_TYPE_TO_MOOD,
@@ -203,13 +208,13 @@ export function CompanionLiveProvider({
           }}
         >
           <div className="oms-companion-event-figure" style={{ "--companion-aura": dockAura } as CSSProperties}>
-            <CompanionCharacter
+            <AssistantPortrait
               state={EVENT_TYPE_TO_MOOD[active.eventType]}
               outfit={outfit}
               hair={DEFAULT_HAIR}
               glasses={DEFAULT_GLASSES}
               makeup={makeup}
-              imageUrl={companionImageUrl}
+              dbImageUrl={companionImageUrl}
               className="h-full w-full"
             />
           </div>
@@ -224,13 +229,13 @@ export function CompanionLiveProvider({
         aria-label={chatOpen ? `Close ${name || "AI Companion"} chat` : `Open ${name || "AI Companion"} chat`}
         style={{ "--companion-aura": dockAura } as CSSProperties}
       >
-        <CompanionCharacter
+        <AssistantPortrait
           state={chatOpen ? "dance" : "focused"}
           outfit={outfit}
           hair={DEFAULT_HAIR}
           glasses={DEFAULT_GLASSES}
           makeup={makeup}
-          imageUrl={companionImageUrl}
+          dbImageUrl={companionImageUrl}
           className="h-full w-full"
         />
       </button>

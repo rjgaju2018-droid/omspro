@@ -11,6 +11,14 @@ import { COMPANION_OUTFITS, type OutfitKind } from "./companion-config";
 // the garment layer per outfit `kind` — 8 outfits come from 4 garment
 // drawings, never a free-form layer.
 //
+// 2026-09-12, round 2 — restyled from the user's reference photo (the
+// "Harmeet agent" look): long CHESTNUT-BROWN wavy hair, oversized dark
+// sunglasses as her signature (on by default, removable per employee via
+// the wardrobe panel), pearl necklace + pearl drop earrings, warm blush,
+// glossy rose lips — plus a ninth "cream dress & blazer" outfit matching
+// the photo. All rules unchanged: daily outfit rotation, dance on
+// celebration, daily makeup rotation.
+//
 // Animation is applied via CSS classes keyed off `data-companion-state` on
 // the outer <g> (see the .oms-companion-* rules in globals.css) rather than
 // inline @keyframes, so the reduced-motion override lives in one place
@@ -19,8 +27,12 @@ import { COMPANION_OUTFITS, type OutfitKind } from "./companion-config";
 const SKIN = "#ffcf8a";
 const SKIN_SHADE = "#f0b464";
 const INK = "#3a2416";
-const HAIR_COLOR = "#3b2314";
-const HAIR_HIGHLIGHT = "#5b3a29";
+// Chestnut brown with warm caramel highlights — straight from the
+// reference photo's hair.
+const HAIR_COLOR = "#6b4226";
+const HAIR_HIGHLIGHT = "#a06a3b";
+const PEARL = "#f6f1e7";
+const PEARL_SHADE = "#d9cfbd";
 
 // Arm rotation (degrees) around each shoulder pivot, per state. The arm is
 // drawn hanging straight down at rest; negative rotates the left arm
@@ -107,10 +119,37 @@ export function CompanionCharacter({ state, outfit, hair, glasses = false, class
         {renderHair(hair)}
         {renderHead(state, makeup)}
         {glasses ? renderGlasses() : null}
+        {/* Signature pearl jewellery — 2026-09-12 reference-photo restyle:
+            a short pearl strand at the collar + pearl drop earrings. Drawn
+            after the head so the earrings sit over the hair. */}
+        {renderPearls()}
       </g>
 
       {renderFrontDecor(state)}
     </svg>
+  );
+}
+
+/** Pearl necklace + drop earrings — the photo's signature accessories. */
+function renderPearls() {
+  return (
+    <g>
+      {/* Necklace: a gently draped strand of pearls across the collar. */}
+      {[...Array(9)].map((_, i) => {
+        const t = i / 8;
+        const x = 82 + t * 36;
+        // Quadratic sag between the two collar points.
+        const y = 92 + 10 * (4 * t * (1 - t));
+        return <circle key={i} cx={x} cy={y} r={2.4} fill={PEARL} stroke={PEARL_SHADE} strokeWidth={0.7} />;
+      })}
+      {/* Drop earrings: a small stud + a hanging pearl on each side. */}
+      {[62, 138].map((x) => (
+        <g key={x}>
+          <line x1={x} y1={116} x2={x} y2={122} stroke={PEARL_SHADE} strokeWidth={1.2} />
+          <circle cx={x} cy={124.5} r={2.8} fill={PEARL} stroke={PEARL_SHADE} strokeWidth={0.7} />
+        </g>
+      ))}
+    </g>
   );
 }
 
@@ -137,6 +176,10 @@ function renderArm(shoulderX: number, shoulderY: number, rotateDeg: number, side
 
 /** Legs / lower garment — differs per outfit kind. */
 function renderLegs(outfit: (typeof COMPANION_OUTFITS)[number]) {
+  if (outfit.kind === "dress_blazer") {
+    // The photo's slim white slip dress — falls straight to mid-calf.
+    return <path d="M86,160 L82,206 L118,206 L114,160 Q100,168 86,160 Z" fill={outfit.accent} stroke={outfit.shade} strokeWidth={1.5} />;
+  }
   if (outfit.kind === "salwar") {
     // Patiala-style salwar: two billowy legs gathered at the ankle.
     return (
@@ -176,6 +219,21 @@ function renderLegs(outfit: (typeof COMPANION_OUTFITS)[number]) {
 /** Torso garment per outfit kind. */
 function renderTorso(outfit: (typeof COMPANION_OUTFITS)[number]) {
   const kind: OutfitKind = outfit.kind;
+  if (kind === "dress_blazer") {
+    // 2026-09-12 — the reference photo: white dress body + draped cream
+    // blazer falling open off both shoulders.
+    return (
+      <g>
+        {/* Dress bodice */}
+        <path d="M84,102 Q100,96 116,102 L120,164 Q100,172 80,164 Z" fill={outfit.accent} stroke={outfit.shade} strokeWidth={1.5} />
+        {/* Blazer — two front panels + shoulder drape */}
+        <path d="M76,104 Q88,98 96,102 L90,168 Q82,166 74,160 Q70,130 76,104 Z" fill={outfit.primary} stroke={outfit.shade} strokeWidth={1.5} />
+        <path d="M124,104 Q112,98 104,102 L110,168 Q118,166 126,160 Q130,130 124,104 Z" fill={outfit.primary} stroke={outfit.shade} strokeWidth={1.5} />
+        {/* Shoulder line across the back of the neck */}
+        <path d="M76,104 Q100,94 124,104 L122,112 Q100,102 78,112 Z" fill={outfit.primary} stroke={outfit.shade} strokeWidth={1.2} opacity={0.95} />
+      </g>
+    );
+  }
   if (kind === "salwar") {
     // Knee-length kameez with a side slit + dupatta across one shoulder.
     return (
@@ -254,13 +312,32 @@ function renderHair(hair: HairId) {
 }
 
 function renderGlasses() {
+  // 2026-09-12 — oversized dark designer sunglasses (the reference photo's
+  // signature): big rounded-square tinted lenses with a thin gold frame,
+  // a subtle top-bar bridge, and gradient shine. Drawn OVER the face so
+  // the eyes hide behind the tint — expressions still read via brows,
+  // blush and lips above/below the lenses.
   return (
-    <g className="oms-companion-glasses" fill="none" stroke="#3a2416" strokeWidth={3} opacity={0.85}>
-      <circle cx={78} cy={128} r={17} />
-      <circle cx={122} cy={128} r={17} />
-      <line x1={95} y1={126} x2={105} y2={126} />
-      <line x1={61} y1={124} x2={50} y2={120} strokeLinecap="round" />
-      <line x1={139} y1={124} x2={150} y2={120} strokeLinecap="round" />
+    <g className="oms-companion-glasses">
+      <defs>
+        <linearGradient id="oms-shade-lens" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#4a3626" stopOpacity={0.96} />
+          <stop offset="100%" stopColor="#1d130c" stopOpacity={0.97} />
+        </linearGradient>
+      </defs>
+      {/* Lenses */}
+      <rect x={56} y={112} width={40} height={30} rx={11} fill="url(#oms-shade-lens)" stroke="#c9a24b" strokeWidth={2.4} />
+      <rect x={104} y={112} width={40} height={30} rx={11} fill="url(#oms-shade-lens)" stroke="#c9a24b" strokeWidth={2.4} />
+      {/* Bridge + gold top bar */}
+      <line x1={96} y1={121} x2={104} y2={121} stroke="#c9a24b" strokeWidth={2.6} />
+      <line x1={58} y1={116} x2={94} y2={114} stroke="#e3c887" strokeWidth={1.2} opacity={0.8} />
+      <line x1={106} y1={114} x2={142} y2={116} stroke="#e3c887" strokeWidth={1.2} opacity={0.8} />
+      {/* Temple arms toward the ears */}
+      <line x1={56} y1={121} x2={47} y2={117} stroke="#c9a24b" strokeWidth={2.4} strokeLinecap="round" />
+      <line x1={144} y1={121} x2={153} y2={117} stroke="#c9a24b" strokeWidth={2.4} strokeLinecap="round" />
+      {/* Diagonal light streak on each lens */}
+      <line x1={64} y1={138} x2={84} y2={116} stroke="#ffffff" strokeWidth={2.5} opacity={0.22} strokeLinecap="round" />
+      <line x1={112} y1={138} x2={132} y2={116} stroke="#ffffff" strokeWidth={2.5} opacity={0.22} strokeLinecap="round" />
     </g>
   );
 }
@@ -281,13 +358,17 @@ function renderHead(state: CompanionStateId, makeup?: MakeupLook) {
       {face}
       {/* Makeup layer sits above the face features */}
       <g pointerEvents="none">
+        {/* Cheek blush — the photo's warm rosy glow (2026-09-12 round 2). */}
+        <ellipse cx={64} cy={140} rx={8} ry={5.5} fill={makeup.blush} opacity={0.5} />
+        <ellipse cx={136} cy={140} rx={8} ry={5.5} fill={makeup.blush} opacity={0.5} />
         {/* Eyeshadow arcs just above the eyes */}
         <path d={`M${leftX - 12},${eyeY - 10} Q${leftX},${eyeY - 18} ${leftX + 12},${eyeY - 10}`} stroke={makeup.eyeshadow} strokeWidth={5} fill="none" opacity={0.55} strokeLinecap="round" />
         <path d={`M${rightX - 12},${eyeY - 10} Q${rightX},${eyeY - 18} ${rightX + 12},${eyeY - 10}`} stroke={makeup.eyeshadow} strokeWidth={5} fill="none" opacity={0.55} strokeLinecap="round" />
         {/* Bindi */}
         <circle cx={100} cy={100} r={3.2} fill={makeup.bindi} />
-        {/* Lips */}
+        {/* Glossy lips — base + highlight for the photo's lip-gloss sheen */}
         <path d="M88,152 Q100,162 112,152 Q100,158 88,152 Z" fill={makeup.lipstick} />
+        <path d="M93,153 Q100,157 107,153" stroke="#ffffff" strokeWidth={1.2} fill="none" opacity={0.45} strokeLinecap="round" />
       </g>
     </g>
   );

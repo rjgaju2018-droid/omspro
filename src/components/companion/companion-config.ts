@@ -128,9 +128,10 @@ export type OutfitId =
   | "jeans_top_blue"
   | "jeans_top_rose"
   | "saree_red"
-  | "saree_green";
+  | "saree_green"
+  | "cream_blazer_dress";
 
-export type OutfitKind = "salwar" | "sharara" | "jeans_top" | "saree";
+export type OutfitKind = "salwar" | "sharara" | "jeans_top" | "saree" | "dress_blazer";
 
 export interface CompanionOutfit {
   id: OutfitId;
@@ -147,6 +148,9 @@ export interface CompanionOutfit {
 }
 
 export const COMPANION_OUTFITS: CompanionOutfit[] = [
+  // 2026-09-12 — the reference photo's exact look: white slip dress +
+  // draped cream blazer. Listed first so the daily rotation starts here.
+  { id: "cream_blazer_dress", label: "Cream Dress & Blazer", kind: "dress_blazer", primary: "#f5efe4", shade: "#d8cdb8", accent: "#fffdf8", shoeColor: "#b45309" },
   // Salwar suits — kameez + salwar + dupatta
   { id: "salwar_pink", label: "Pink Salwar Suit", kind: "salwar", primary: "#ec4899", shade: "#be185d", accent: "#fbcfe8", shoeColor: "#9d174d" },
   { id: "salwar_teal", label: "Teal Salwar Suit", kind: "salwar", primary: "#14b8a6", shade: "#0f766e", accent: "#99f6e4", shoeColor: "#134e4a" },
@@ -161,7 +165,7 @@ export const COMPANION_OUTFITS: CompanionOutfit[] = [
   { id: "saree_green", label: "Green Silk Saree", kind: "saree", primary: "#16a34a", shade: "#166534", accent: "#fcd34d", shoeColor: "#14532d" },
 ];
 
-export const DEFAULT_OUTFIT: OutfitId = "salwar_pink";
+export const DEFAULT_OUTFIT: OutfitId = "cream_blazer_dress";
 
 /**
  * Daily outfit rotation — day-of-year mod the outfit count, so the outfit
@@ -193,18 +197,23 @@ export const DEFAULT_HAIR: HairId = "long_wavy";
 
 // 2026-09-12 — "live makeup bhi karti rahegi": a small daily makeup look —
 // lipstick + bindi + eyeshadow — rotating alongside the outfit. Pure data,
-// drawn by companion-character.tsx's renderMakeup().
+// drawn by companion-character.tsx's renderMakeup(). 2026-09-12 round 2:
+// warm rose tones first (the reference photo's glossy nude-rose lip), and
+// a blush tone was added for the cheeks.
 export interface MakeupLook {
   lipstick: string;
   eyeshadow: string;
   bindi: string;
+  /** Cheek blush — photo-inspired warm rosy glow. */
+  blush: string;
 }
 
 export const MAKEUP_LOOKS: MakeupLook[] = [
-  { lipstick: "#e11d48", eyeshadow: "#f472b6", bindi: "#dc2626" }, // classic red
-  { lipstick: "#db2777", eyeshadow: "#c084fc", bindi: "#7c3aed" }, // pink-purple
-  { lipstick: "#be123c", eyeshadow: "#fbbf24", bindi: "#b45309" }, // maroon-gold
-  { lipstick: "#f43f5e", eyeshadow: "#38bdf8", bindi: "#0ea5e9" }, // rose-blue
+  { lipstick: "#d4776f", eyeshadow: "#d9a06b", bindi: "#c2410c", blush: "#f2a28c" }, // photo look: nude-rose lip + warm glow
+  { lipstick: "#e11d48", eyeshadow: "#f472b6", bindi: "#dc2626", blush: "#fb7185" }, // classic red
+  { lipstick: "#db2777", eyeshadow: "#c084fc", bindi: "#7c3aed", blush: "#f472b6" }, // pink-purple
+  { lipstick: "#be123c", eyeshadow: "#fbbf24", bindi: "#b45309", blush: "#fda4af" }, // maroon-gold
+  { lipstick: "#f43f5e", eyeshadow: "#38bdf8", bindi: "#0ea5e9", blush: "#fca5a5" }, // rose-blue
 ];
 
 export function makeupForDate(date: Date = new Date()): MakeupLook {
@@ -213,7 +222,8 @@ export function makeupForDate(date: Date = new Date()): MakeupLook {
   return MAKEUP_LOOKS[dayOfYear % MAKEUP_LOOKS.length];
 }
 
-// 2026-09-05 — glasses overlay, on by default (matches every reference
-// photo). Kept as its own boolean rather than folded into hair/outfit so
-// it can be toggled independently on the wardrobe panel.
-export const DEFAULT_GLASSES = false;
+// 2026-09-05 — glasses overlay. 2026-09-12 round 2 — flipped to true:
+// the new reference photo's oversized dark sunglasses are the assistant's
+// signature look. Kept as its own boolean rather than folded into
+// hair/outfit so it can be toggled independently on the wardrobe panel.
+export const DEFAULT_GLASSES = true;
