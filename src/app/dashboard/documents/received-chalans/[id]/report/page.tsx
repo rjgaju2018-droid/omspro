@@ -68,7 +68,7 @@ async function ReceivedChalanReportInner({ id }: { id: string }) {
       </div>
 
       <PrintArea id="received-chalan-report-area">
-        <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-900 shadow-sm print:border-0 print:p-0" style={{ fontFamily: "Georgia, serif" }}>
+        <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-900 shadow-sm print:max-w-none print:rounded-none print:border-0 print:p-0 print:shadow-none" style={{ fontFamily: "Georgia, serif" }}>
           <div className="mb-4 flex items-center gap-3">
             {company?.logo_url && (
               // eslint-disable-next-line @next/next/no-img-element

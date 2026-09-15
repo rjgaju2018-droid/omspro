@@ -232,6 +232,40 @@ export const LETTER_TEMPLATES: LetterTemplate[] = [
       "We wish you the best in your future endeavors.\n\n" +
       "For {{company_name}}",
   },
+  {
+    // 2026-09-16 — new template built from the user's reference internship
+    // offer letter (the Unified Mentor format they shared): temporary
+    // employment as an intern for a fixed duration, the "temporary
+    // employment status while an intern" clause, the "not an offer of
+    // employment" clause, and the supersede clause. Company name stays
+    // dynamic ({{company_name}}) — no hardcoded client name.
+    slug: "internship-offer-letter",
+    title: "Internship Offer Letter",
+    icon: "🎓",
+    subject: "Offer for Internship / Temporary Employment",
+    toWhomsoever: false,
+    fields: [
+      { key: "position", label: "Internship Position (e.g. Web Development Intern)", type: "text" },
+      { key: "duration_months", label: "Duration (months)", type: "text" },
+      { key: "start_date", label: "Starting From", type: "date" },
+      { key: "end_date", label: "Ending On", type: "date" },
+    ],
+    bodyTemplate:
+      "Dear {{employee_name}},\n\n" +
+      "I'm pleased to offer you temporary employment as a {{position}} for a period of {{duration_months}} Months on " +
+      "behalf of {{company_name}}. Starting from {{start_date}} to {{end_date}}. If you agree to this proposal, your " +
+      "internship with the company will start right away. You'll have \"temporary employment\" status while you're an " +
+      "intern. All of the perks that permanent employees of the company receive are not available to you as the " +
+      "temporary employee.\n\n" +
+      "By accepting this offer, you acknowledge that you understand participation in this program is not an offer of " +
+      "employment and successful completion of the program does not entitle you to an employment offer from " +
+      "{{company_name}}.\n\n" +
+      "This letter supersedes all past conversations and agreements about your internship and is the final agreement " +
+      "between you and the Company. Only a written amendment that is endorsed by both of us may change the terms of " +
+      "this letter. We look forward to having you begin your career at {{company_name}} and wish you a successful " +
+      "internship.\n\n" +
+      "For {{company_name}}",
+  },
 ];
 
 export function findTemplate(slug: string): LetterTemplate | undefined {

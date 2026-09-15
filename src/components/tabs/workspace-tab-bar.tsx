@@ -15,7 +15,7 @@ export function WorkspaceTabBar() {
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1 overflow-x-auto border-b border-[var(--oms-header-border)] bg-[var(--oms-header-bg)] px-3 py-1.5">
+    <nav className="oms-tabbar print:hidden flex items-center gap-1 overflow-x-auto border-b border-[var(--oms-header-border)] bg-[var(--oms-header-bg)] px-3 py-1.5">
       {/* Pinned Home — always first, never closable. */}
       <Link
         href="/dashboard"
@@ -67,6 +67,6 @@ export function WorkspaceTabBar() {
       >
         Close all
       </button>
-    </div>
+    </nav>
   );
 }

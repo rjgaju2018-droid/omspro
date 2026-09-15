@@ -43,7 +43,7 @@ export function VerticalAssistant() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label="Open/close assistant"
-        className="fixed right-0 top-1/2 z-40 -translate-y-1/2 rounded-l-xl border border-l-0 border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)] px-2 py-4 text-sm shadow-xl transition hover:px-3"
+        className="print:hidden fixed right-0 top-1/2 z-40 -translate-y-1/2 rounded-l-xl border border-l-0 border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)] px-2 py-4 text-sm shadow-xl transition hover:px-3"
         title="Assistant"
       >
         {open ? "›" : "‹"}
@@ -52,7 +52,7 @@ export function VerticalAssistant() {
       {/* Slide-in panel */}
       <aside
         aria-label="OMS Pro Assistant"
-        className={`fixed right-0 top-16 bottom-16 z-40 flex w-72 flex-col rounded-l-2xl border border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)] shadow-2xl transition-transform duration-300 ${
+        className={`print:hidden fixed right-0 top-16 bottom-16 z-40 flex w-72 flex-col rounded-l-2xl border border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)] shadow-2xl transition-transform duration-300 ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >

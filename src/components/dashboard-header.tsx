@@ -40,7 +40,7 @@ export function DashboardHeader({
   notificationItems: NotificationItem[];
 }) {
   return (
-    <header className="flex h-16 items-center justify-between border-b border-[var(--oms-header-border)] bg-[var(--oms-header-bg)] px-4 shadow-sm sm:px-6">
+    <header className="print:hidden flex h-16 items-center justify-between border-b border-[var(--oms-header-border)] bg-[var(--oms-header-bg)] px-4 shadow-sm sm:px-6">
       <div className="flex items-center gap-2 sm:gap-3">
         {/* 2026-09-12 — opens the Work Menu drawer below 1024px (see
             mobile-menu-toggle.tsx); renders nothing on desktop. */}

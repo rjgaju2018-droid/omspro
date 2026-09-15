@@ -189,7 +189,7 @@ export function DocumentEntryTabs({
     return (
       <div>
         {tabBar}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 print:grid-cols-1 lg:grid-cols-2">
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <ShipmentHandoverChalanForm parties={parties} />
           </div>

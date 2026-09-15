@@ -17,7 +17,7 @@ export function TodaysCelebrationsBanner({ celebrations }: { celebrations: Celeb
   const label = (c: Celebration) => (c.kind === "birthday" ? "Birthday" : "Anniversary");
 
   return (
-    <div className="mb-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+    <div className="oms-celebration-banner print:hidden mb-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
       {celebrations.map((c) => (
         <div key={`${c.employeeId}-${c.kind}`} className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-amber-900">

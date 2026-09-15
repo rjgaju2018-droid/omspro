@@ -259,7 +259,7 @@ export function InvoiceView({
   const packageLabels = Array.from({ length: Math.max(1, Number(noOfPackages) || 1) }, (_, idx) => `PACK-${idx + 1}`);
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 print:grid-cols-1 lg:grid-cols-2">
       <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm print:hidden">
         <h2 className="text-sm font-semibold text-slate-900">Edit before printing</h2>
         {saved && <p className="text-xs text-slate-500">{saved}</p>}

@@ -156,7 +156,12 @@ export function LetterForm({
   const filenameBase = `${template.slug}-${(employeeName || "letter").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    // 2026-09-16 — lg:grid-cols-2 split the screen into Details | Preview
+    // columns; in PRINT the (now hidden) details panel still reserved its
+    // half, squeezing the letter onto the left half of the A4 page. The
+    // grid collapses to one column at print time so the letter uses the
+    // full page width.
+    <div className="grid grid-cols-1 gap-6 print:grid-cols-1 lg:grid-cols-2">
       <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm print:hidden">
         <h2 className="text-sm font-semibold text-slate-900">Details</h2>
 

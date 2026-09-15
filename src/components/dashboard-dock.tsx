@@ -132,7 +132,7 @@ export function DashboardDock({ capabilities }: { capabilities: string[] }) {
   if (!mounted || navStyle !== "dock") return null;
 
   return (
-    <nav aria-label="Work menu (dock)" className="pointer-events-none fixed inset-x-0 bottom-3 z-40 flex justify-center px-3">
+    <nav aria-label="Work menu (dock)" className="print:hidden pointer-events-none fixed inset-x-0 bottom-3 z-40 flex justify-center px-3">
       <div className="oms-dock-inner pointer-events-auto flex w-[min(94vw,580px)] items-center gap-1 rounded-2xl border border-[var(--oms-sidebar-border)] bg-transparent px-2 pb-2 pt-10 shadow-2xl backdrop-blur-2xl">
         <div
           ref={viewportRef}

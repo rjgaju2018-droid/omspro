@@ -95,7 +95,7 @@ export function CertificateForm({ employees, companies }: { employees: Employee[
   const labelClass = "mb-1 block text-sm font-medium text-slate-700";
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 print:grid-cols-1 lg:grid-cols-2">
       <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm print:hidden">
         <h2 className="text-sm font-semibold text-slate-900">Certificate Details</h2>
 

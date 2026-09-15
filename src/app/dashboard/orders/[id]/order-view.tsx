@@ -101,7 +101,7 @@ export function OrderPrintSheet({
 
   return (
     <div
-      className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-8 text-xs text-slate-900 print:border-0 print:p-0"
+      className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-8 text-xs text-slate-900 print:max-w-none print:rounded-none print:border-0 print:p-0"
       style={{ fontFamily: "Arial, sans-serif", pageBreakAfter: pageBreakAfter ? "always" : "auto" }}
     >
           <div className="mb-4 flex items-start justify-between border-b-2 border-slate-800 pb-3">

@@ -45,6 +45,11 @@ export const LETTER_TYPE_VALUES: LetterTypeValue[] = [
 
 export const TEMPLATE_TO_LETTER_TYPE: Record<string, LetterTypeValue> = {
   "offer-letter": "Offer Letter",
+  // 2026-09-16 — internship offers are a flavour of the Offer Letter series:
+  // they reuse the same dispatch-number sequence ("OL") rather than needing
+  // a new letter_type enum value (same reasoning as appointment-letter →
+  // Joining Letter — see the 2026-08-27 migration's notes).
+  "internship-offer-letter": "Offer Letter",
   "appointment-letter": "Joining Letter",
   "experience-certificate": "Experience Letter",
   "relieving-letter": "Relieving Letter",

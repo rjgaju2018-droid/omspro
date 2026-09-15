@@ -51,7 +51,7 @@ export function IssuedLetterView({ letter, company }: { letter: IssuedLetter; co
   const filenameBase = `${letter.refNo || "letter"}-${letter.employeeName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 print:grid-cols-1 lg:grid-cols-2">
       <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm print:hidden">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-900">

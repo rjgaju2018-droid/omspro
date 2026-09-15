@@ -87,7 +87,7 @@ async function CreditNoteReportInner({ id }: { id: string }) {
       </div>
 
       <PrintArea id="credit-note-report-area">
-        <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-900 shadow-sm print:border-0 print:p-0" style={{ fontFamily: "Georgia, serif" }}>
+        <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-900 shadow-sm print:max-w-none print:rounded-none print:border-0 print:p-0 print:shadow-none" style={{ fontFamily: "Georgia, serif" }}>
           {/* 2026-08-29 (later, same day) — see debit-notes/[id]/report's
               header comment for the full "why": restructured to full-width
               letterhead, then centered title block, then the unchanged

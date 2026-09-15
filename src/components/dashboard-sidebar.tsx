@@ -96,7 +96,7 @@ export function DashboardSidebar({ capabilities }: { capabilities: string[] }) {
   // has been read) so there's no flash of the wrong layout.
   if (!mounted || pinned) {
     return (
-      <aside className="oms-sidebar flex w-72 flex-col border-r border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)]">
+      <aside className="oms-sidebar print:hidden flex w-72 flex-col border-r border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)]">
         <div className="flex h-16 items-center justify-between gap-2 border-b border-[var(--oms-sidebar-border)] px-6">
           <span className="text-lg font-bold text-[var(--oms-sidebar-text)]">Work Menu</span>
           <div className="flex items-center gap-1">
@@ -129,7 +129,7 @@ export function DashboardSidebar({ capabilities }: { capabilities: string[] }) {
         <div className="h-10 w-1 rounded-full bg-[var(--oms-sidebar-tile-border)] transition group-hover:bg-[var(--oms-accent)]" />
       </div>
       <aside
-        className={`oms-sidebar fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)] shadow-2xl transition-transform duration-200 ease-out ${
+        className={`oms-sidebar print:hidden fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-[var(--oms-sidebar-border)] bg-[var(--oms-sidebar-bg)] shadow-2xl transition-transform duration-200 ease-out ${
           hovered ? "translate-x-0" : "-translate-x-full"
         }`}
       >

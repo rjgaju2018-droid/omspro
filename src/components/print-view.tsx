@@ -57,6 +57,17 @@ export function PrintArea({ id, children }: { id: string; children: React.ReactN
           body * { visibility: hidden; }
           #${id}, #${id} * { visibility: visible; }
           #${id} { position: static; width: 100%; }
+          /* 2026-09-16 — "A4 ke page par kaha aara": visibility:hidden keeps
+             every chrome element's LAYOUT BOX, so the 288px sidebar, 64px
+             header, tab bar and celebration banner still occupy space and
+             squeeze the printable content into the leftover column. Display
+             the chrome away entirely so the print area spans the FULL page
+             width (visibility:visible above still wins for the area itself
+             because display:none is set on the chrome, not on it). Targets
+             each shell component's stable class — safe because by this point
+             everything except #${id} is already invisible anyway. */
+          .oms-sidebar, .oms-dock-inner, .oms-celebration-banner { display: none !important; }
+          header, nav.oms-tabbar { display: none !important; }
         }
       `}</style>
       <div id={id}>

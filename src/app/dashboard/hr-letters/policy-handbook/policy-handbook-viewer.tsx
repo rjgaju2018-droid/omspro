@@ -10,13 +10,10 @@ type Company = { id: string; name: string; logo_url: string | null };
 export function PolicyHandbookViewer({ companies }: { companies: Company[] }) {
   const [companyId, setCompanyId] = useState(companies[0]?.id ?? "");
   const company = companies.find((c) => c.id === companyId);
-  // Mirrors the textarea's own initial value (see HandbookTextarea below) —
-  // used only for the Word/Email/WhatsApp buttons, which need the text as
-  // a plain string rather than reading it out of the DOM. If the employee
-  // has edited the textarea, these three still send the ORIGINAL text
-  // (same limitation the textarea's own "keyed by company, no lifted
-  // state" design already has); Print/PDF is the one that always reflects
-  // on-screen edits, since it captures the live textarea via window.print().
+  // Mirrors the textarea's own initial value — used only for the
+  // Word/Email/WhatsApp buttons, which need the text as
+  // a plain string. (Print/PDF now also reflects on-screen edits via the
+  // HandbookTextarea's print-mirror div.)
   const companyName = company?.name ?? "";
   const filenameBase = `policy-handbook-${companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "company"}`;
 
@@ -70,7 +67,7 @@ export function PolicyHandbookViewer({ companies }: { companies: Company[] }) {
       </div>
 
       <PrintArea id="handbook-print-area">
-      <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+      <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm print:max-w-none print:rounded-none print:border-0 print:p-0 print:shadow-none">
         {company?.logo_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={company.logo_url} alt={company.name} className="mb-4 h-14 w-14 object-contain" />
@@ -88,11 +85,19 @@ export function PolicyHandbookViewer({ companies }: { companies: Company[] }) {
 
 function HandbookTextarea({ companyName }: { companyName: string }) {
   const [text, setText] = useState(() => policyHandbookText(companyName));
+  // 2026-09-16 — print fix: a <textarea> prints only the portion visible in
+  // its own scroll box (the rest of its content just scrolls — it never
+  // paginates), so the printed handbook was one line tall. The textarea
+  // stays screen-only for editing; a mirror div with the SAME live text
+  // renders at print time and flows/paginates normally across pages.
   return (
-    <textarea
-      className="min-h-[900px] w-full resize-y border-0 text-sm leading-relaxed text-slate-900 outline-none print:min-h-0"
-      value={text}
-      onChange={(e) => setText(e.target.value)}
-    />
+    <>
+      <textarea
+        className="min-h-[900px] w-full resize-y border-0 text-sm leading-relaxed text-slate-900 outline-none print:hidden"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <div className="hidden whitespace-pre-wrap text-sm leading-relaxed text-slate-900 print:block">{text}</div>
+    </>
   );
 }
