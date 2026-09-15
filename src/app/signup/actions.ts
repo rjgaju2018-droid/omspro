@@ -20,6 +20,10 @@
 // against the existing rows (UNIQUE constraints in db/schema.sql back it).
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { TRIAL_DAYS } from "@/lib/saas/plans";
+// 2026-09-15 — new signups start with onboarding NOT completed: the owner is
+// sent through the wizard (profile → company setup → module selection) on
+// first login. Pre-wizard companies are stamped complete by the migration.
+import { DEFAULT_MODULE_GROUPS } from "@/lib/company-modules";
 
 export type SignupState = { error: string | null; success: { email: string } | null };
 
@@ -131,6 +135,15 @@ export async function signup(_prevState: SignupState, formData: FormData): Promi
       .select("id")
       .single();
     if (empError || !employee) throw new Error(empError?.message ?? "employee insert failed");
+
+    // 4. 2026-09-15 — module selection defaults + wizard pending. The row
+    //    gives the dashboard a concrete selection from day one; the null
+    //    onboarding_completed_at on the company is what routes the owner to
+    //    /dashboard/onboarding on first login.
+    await service.from("company_modules").insert({
+      company_id: company.id,
+      enabled_groups: DEFAULT_MODULE_GROUPS,
+    });
 
     return { error: null, success: { email } };
   } catch (err) {

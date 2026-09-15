@@ -942,6 +942,18 @@ body {
   color: var(--oms-text);
 }
 
+/* 2026-09-15 — react-bits-style marquee keyframes (used by the landing
+   page's products ribbon via animated-bits.tsx's Marquee; plain CSS here
+   because styled-jsx isn't part of this app's stack). */
+@keyframes oms-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 /* A real generated photo (companion-character.tsx's imageUrl branch)
    instead of the SVG — reuses the same per-state animation classes as the
    SVG's .oms-companion-body-group where it makes sense (transform-only

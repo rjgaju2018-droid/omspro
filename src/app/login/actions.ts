@@ -44,9 +44,26 @@ export async function login(_prevState: LoginState, formData: FormData): Promise
         .maybeSingle();
       if (employee) {
         await recordPunchIn(service, employee.id, employee.company_id, "Web Punch");
+
+        // 2026-09-15 — brand-new workspaces go through the onboarding
+        // wizard (profile → company setup → module selection) before the
+        // dashboard. Best-effort: if this lookup fails for any reason the
+        // default /dashboard destination still works (the wizard page
+        // re-checks and the dashboard just renders normally).
+        const { data: company } = await service
+          .from("companies")
+          .select("onboarding_completed_at")
+          .eq("id", employee.company_id)
+          .maybeSingle();
+        if (company && !company.onboarding_completed_at) {
+          redirect("/dashboard/onboarding");
+        }
       }
     }
-  } catch {
+  } catch (err) {
+    // redirect() throws NEXT_REDIRECT — it MUST propagate, never be eaten
+    // by this catch. Only genuine attendance/lookup failures fall through.
+    if (err && typeof err === "object" && "digest" in err && typeof err.digest === "string" && err.digest.startsWith("NEXT_REDIRECT")) throw err;
     // Never let an attendance hiccup block a successful login.
   }
 

@@ -11,6 +11,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { todayIST } from "@/lib/attendance/ist-date";
+// 2026-09-15 — company module selection: a company chooses WHICH parts of
+// OMS Pro it runs during onboarding; the intersection with the employee's
+// role capabilities is applied right here so every page/action/layout in
+// the app respects it without any per-page changes.
+import { capabilitiesForGroups } from "@/lib/company-modules";
 
 export class UnauthorizedError extends Error {
   constructor(message = "Not signed in.") {
@@ -77,6 +82,10 @@ export type AuthedEmployee = {
   roleName: string;
   capabilities: string[];
   isPlatformOwner: boolean;
+  /** 2026-09-15 — the current company's chosen module groups (company_modules.enabled_groups). */
+  enabledModuleGroups: string[];
+  /** 2026-09-15 — null = the onboarding wizard hasn't been completed yet. */
+  onboardingCompletedAt: string | null;
 };
 
 /**
@@ -135,7 +144,19 @@ export async function getAuthedEmployee(): Promise<AuthedEmployee> {
   // missing RLS policy on a table that legitimately has rows).
   const finSupabase = createServiceRoleClient();
 
-  const [{ data: role }, { data: caps }, { data: access }, { data: storeAccess }, { data: coverage }, { data: allCompanies }, { data: allCapabilities }] = await Promise.all([
+  // 2026-09-15 — resolve "which company is this login acting as" BEFORE the
+  // parallel query block below: company_modules (the company's chosen
+  // module groups) is keyed by this id. The full companyIds union (extra
+  // companies via employee_company_access + leave coverage) is only known
+  // AFTER those queries, so this pre-resolution falls back to the home
+  // company when the cookie holds an id the home company alone can't
+  // justify; the post-query re-check below still corrects it against the
+  // full union when they differ.
+  const cookieStore0 = await cookies();
+  const requested0 = cookieStore0.get(CURRENT_COMPANY_COOKIE)?.value;
+  const currentCompanyId = requested0 && requested0 === employee.company_id ? requested0 : employee.company_id;
+
+  const [{ data: role }, { data: caps }, { data: access }, { data: storeAccess }, { data: coverage }, { data: allCompanies }, { data: allCapabilities }, { data: companyModules }] = await Promise.all([
     supabase.from("roles").select("name").eq("id", employee.role_id).single(),
     supabase.from("role_capabilities").select("capability_code").eq("role_id", employee.role_id),
     supabase.from("employee_company_access").select("company_id").eq("employee_id", employee.id),
@@ -151,8 +172,12 @@ export async function getAuthedEmployee(): Promise<AuthedEmployee> {
       .eq("covering_employee_id", employee.id)
       .lte("from_date", today)
       .gte("to_date", today),
-    finSupabase.from("companies").select("id, access_mode").eq("active", true),
+    finSupabase.from("companies").select("id, access_mode, onboarding_completed_at").eq("active", true),
     finSupabase.from("capabilities").select("code"),
+    // 2026-09-15 — the current company's module selection. One tiny PK
+    // lookup; a missing row means "everything on" (pre-wizard companies,
+    // handled by the migration seeding existing rows anyway).
+    finSupabase.from("company_modules").select("enabled_groups").eq("company_id", currentCompanyId).maybeSingle(),
   ]);
 
   const isPlatformOwner = employee.is_platform_owner === true;
@@ -175,28 +200,63 @@ export async function getAuthedEmployee(): Promise<AuthedEmployee> {
     : Array.from(new Set([employee.company_id, ...(access ?? []).map((a) => a.company_id), ...coverageCompanyIds]));
   const storeIds = Array.from(new Set([...(storeAccess ?? []).map((a) => a.store_id), ...coverageStoreIds]));
 
-  const cookieStore = await cookies();
-  const requested = cookieStore.get(CURRENT_COMPANY_COOKIE)?.value;
-  const currentCompanyId = requested && companyIds.includes(requested) ? requested : employee.company_id;
-  const currentCompany = (allCompanies ?? []).find((company) => company.id === currentCompanyId);
+  // Post-query re-check: now that the FULL company union is known, honor a
+  // cookie id that the pre-query resolution (home company only) couldn't
+  // justify. Same trust rules as always — the id must be one of the
+  // employee's companies.
+  const requested = cookieStore0.get(CURRENT_COMPANY_COOKIE)?.value;
+  const resolvedCompanyId =
+    requested && requested !== currentCompanyId && companyIds.includes(requested) ? requested : currentCompanyId;
+  const currentCompany = (allCompanies ?? []).find((company) => company.id === resolvedCompanyId);
   if (!isPlatformOwner && currentCompany?.access_mode === "suspended") {
     throw new UnauthorizedError("This workspace access is currently suspended.");
   }
 
+  // 2026-09-15 — company module selection. roleCaps are what the ROLE
+  // grants; enabledModuleGroups are which parts of the product the COMPANY
+  // actually runs. The effective capability list is the intersection, so a
+  // company that switched HR off during onboarding simply has no HR tiles
+  // and its employees' attendance actions are rejected server-side too.
+  // Platform owners always keep everything (they administer the platform,
+  // not one workspace's feature set). The module lookup in the parallel
+  // block above was keyed to the PRE-query company id — when the post-query
+  // re-check switched to a different (still valid) company, re-read that
+  // company's modules. Null groups / missing row = everything on.
+  const finalCompanyId = resolvedCompanyId;
+  let enabledGroups = ((companyModules?.enabled_groups as string[] | null) ?? []).filter(
+    (g): g is string => typeof g === "string"
+  );
+  if (finalCompanyId !== currentCompanyId) {
+    const { data: modules2 } = await finSupabase
+      .from("company_modules")
+      .select("enabled_groups")
+      .eq("company_id", finalCompanyId)
+      .maybeSingle();
+    enabledGroups = ((modules2?.enabled_groups as string[] | null) ?? []).filter((g): g is string => typeof g === "string");
+  }
+  const roleCaps = isPlatformOwner
+    ? [...(allCapabilities ?? []).map((capability) => capability.code), "platform_owner"]
+    : (caps ?? []).map((c) => c.capability_code);
+  const enabledCaps = enabledGroups.length > 0 ? new Set(capabilitiesForGroups(enabledGroups)) : null;
+  const capabilities =
+    isPlatformOwner || !enabledCaps
+      ? roleCaps
+      : roleCaps.filter((c) => c === "platform_owner" || enabledCaps.has(c));
+
   return {
     id: employee.id,
     homeCompanyId: employee.company_id,
-    currentCompanyId,
+    currentCompanyId: finalCompanyId,
     companyIds,
     storeIds,
     name: employee.name,
     photoUrl: employee.photo_url,
     roleId: employee.role_id,
     roleName: role?.name ?? "",
-    capabilities: isPlatformOwner
-      ? [...(allCapabilities ?? []).map((capability) => capability.code), "platform_owner"]
-      : (caps ?? []).map((c) => c.capability_code),
+    capabilities,
     isPlatformOwner,
+    enabledModuleGroups: enabledGroups,
+    onboardingCompletedAt: currentCompany?.onboarding_completed_at ?? null,
   };
 }
 
