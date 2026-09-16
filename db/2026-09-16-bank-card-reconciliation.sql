@@ -372,7 +372,7 @@ BEGIN
       AND (p_line_id IS NULL OR c.id = p_line_id)
     ORDER BY c.txn_date
   LOOP
-    v_line_digits := regexp_replace(COALESCE(c.reference_no, ''), '[^0-9]', '', 'g');
+    v_line_digits := regexp_replace(COALESCE(v_line.reference_no, ''), '[^0-9]', '', 'g');
     v_payment := NULL;
 
     -- A) Reference digits → Exact.
@@ -383,7 +383,7 @@ BEGIN
       WHERE b.company_id = p_company_id
         AND p.reference_no IS NOT NULL
         AND position(v_line_digits IN regexp_replace(p.reference_no, '[^0-9]', '', 'g')) > 0
-      ORDER BY abs(p.amount - c.amount) ASC
+      ORDER BY abs(p.amount - v_line.amount) ASC
       LIMIT 1;
       IF v_payment.id IS NOT NULL THEN
         UPDATE credit_card_statement_lines
@@ -401,8 +401,8 @@ BEGIN
     FROM bill_pass_register_payments p
     JOIN bill_pass_register b ON b.id = p.bill_pass_register_id
     WHERE b.company_id = p_company_id
-      AND p.amount = c.amount
-      AND p.payment_date BETWEEN c.txn_date - v_days AND c.txn_date + v_days
+      AND p.amount = v_line.amount
+      AND p.payment_date BETWEEN v_line.txn_date - v_days AND v_line.txn_date + v_days
     ORDER BY p.payment_date ASC
     LIMIT 1;
     IF v_payment.id IS NOT NULL THEN
