@@ -496,7 +496,7 @@ SELECT
   COALESCE(paid.total_paid, 0)    AS total_paid,
   COALESCE(spend.total_spent, 0) - COALESCE(paid.total_paid, 0) AS card_outstanding,
   ba.credit_limit - (COALESCE(spend.total_spent, 0) - COALESCE(paid.total_paid, 0)) AS available_limit,
-  COALESCE(spend.pending_count, 0)  AS pending_match_count,
+  COALESCE(spend.pending_match_count, 0)  AS pending_match_count,
   COALESCE(spend.total_count, 0)    AS total_txn_count
 FROM bank_accounts ba
 LEFT JOIN (
