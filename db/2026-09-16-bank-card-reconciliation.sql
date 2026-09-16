@@ -530,12 +530,12 @@ SELECT
   ba.account_name,
   m.month_start::date                                   AS month,
   COALESCE(p.etsy_amount, 0)                            AS portal_etsy_inr,
-  COALESCE(p.amazon_amount, 0)                          AS portal_amazon_inr,
+  COALESCE(pa.amazon_amount, 0)                         AS portal_amazon_inr,
   COALESCE(b.etsy_bank, 0)                              AS bank_etsy_inr,
   COALESCE(b.amazon_bank, 0)                            AS bank_amazon_inr,
   COALESCE(b.other_bank, 0)                             AS bank_other_inr,
   (COALESCE(p.etsy_amount, 0) - COALESCE(b.etsy_bank, 0))       AS etsy_variance_inr,
-  (COALESCE(p.amazon_amount, 0) - COALESCE(b.amazon_bank, 0))   AS amazon_variance_inr
+  (COALESCE(pa.amazon_amount, 0) - COALESCE(b.amazon_bank, 0))  AS amazon_variance_inr
 FROM months m
 JOIN bank_accounts ba ON ba.id = m.account_id
 LEFT JOIN (
@@ -549,6 +549,15 @@ LEFT JOIN (
   WHERE currency = 'INR'
   GROUP BY company_id, date_trunc('month', txn_date)
 ) p ON p.company_id = m.company_id AND p.month_start = m.month_start
+LEFT JOIN (
+  -- Amazon's own INR transactions ledger, same month-bucketing; total_amount
+  -- nets off refunds (negative rows) exactly like Etsy's untyped SUM(net).
+  SELECT company_id, date_trunc('month', txn_date) AS month_start,
+         SUM(total_amount)                          AS amazon_amount
+  FROM amazon_transactions
+  WHERE currency = 'INR'
+  GROUP BY company_id, date_trunc('month', txn_date)
+) pa ON pa.company_id = m.company_id AND pa.month_start = m.month_start
 LEFT JOIN (
   SELECT company_id, date_trunc('month', txn_date) AS month_start,
          SUM(cr_amount) FILTER (WHERE position('etsy' IN lower(description)) > 0)   AS etsy_bank,
