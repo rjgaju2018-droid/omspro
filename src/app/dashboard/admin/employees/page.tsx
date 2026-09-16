@@ -46,10 +46,6 @@ export default async function EmployeesAdminPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-slate-900">Employees</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Create a new login, reset a password, or deactivate an employee — all from here, no need to go into the
-          Supabase dashboard.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

@@ -185,10 +185,6 @@ export default async function StockPage({
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">📦 Stock (Raw Material)</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Stock In / Stock Out per Source + SKU — Chalan No. mandatory on every live entry. Current Stock is always
-            computed live from the In/Out ledger, never stored.
-          </p>
         </div>
         <Link
           href="/dashboard/stock/bulk-upload"
@@ -232,13 +228,7 @@ export default async function StockPage({
       </form>
 
       <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
-        <h2 className="mb-1 text-sm font-semibold text-slate-800">🔔 Reorder Alerts</h2>
-        <p className="mb-3 text-xs text-slate-500">
-          Simple forecast, not a seasonality model: current stock ÷ average daily Stock Out over the last{" "}
-          {CONSUMPTION_WINDOW_DAYS} days. Items with under {REORDER_ALERT_DAYS_OF_COVER} days of cover left at that
-          rate are listed below. An item with zero recent Stock Out is never flagged, even at 0 stock — no recent
-          usage means no reorder signal, not a shortage.
-        </p>
+        <h2 className="mb-3 text-sm font-semibold text-slate-800">🔔 Reorder Alerts</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead>

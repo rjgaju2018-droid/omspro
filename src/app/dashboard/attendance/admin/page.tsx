@@ -481,7 +481,6 @@ export default async function AttendanceAdminPage({
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-slate-900">🗓️ Attendance Admin</h1>
-        <p className="mt-1 text-sm text-slate-500">Holiday calendar, weekly off, team attendance &amp; daily work reports.</p>
       </div>
 
       <form method="get" className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">

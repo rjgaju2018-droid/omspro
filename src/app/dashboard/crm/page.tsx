@@ -132,7 +132,6 @@ export default async function CrmOverviewPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">📊 CRM Overview</h1>
-        <p className="mt-1 text-sm text-slate-500">Company-wide order/attendance snapshot, data-quality alerts, and the P&amp;L Dashboard.</p>
       </div>
 
       <form method="GET" className="rounded-xl border border-slate-200 bg-white p-4">

@@ -54,10 +54,6 @@ export default async function BankReconciliationPage() {
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">🏦 Bank &amp; Card Reconciliation</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Multiple bank accounts + credit cards. Upload a statement (koi bhi format — columns auto-adjust),
-            auto-match against payments, ✓ Verify to lock the link, aur missed entries ka pata turant chal jata hai.
-          </p>
         </div>
         <Link
           href="/dashboard/csv-upload"

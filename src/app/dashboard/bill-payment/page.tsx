@@ -128,11 +128,6 @@ export default async function BillPaymentPage({
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-slate-900">💳 Bill Payment</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {status === "paid" ? "Paid" : status === "overdue" ? "Overdue" : status === "pending" ? "Not-yet-due" : "Unpaid/partially-paid"}{" "}
-          Bill Pass Register entries — record a payment against any of them below. Total outstanding:{" "}
-          <span className="font-semibold text-slate-800">₹{totalOutstanding.toFixed(2)}</span>
-        </p>
       </div>
 
       <form method="get" className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
