@@ -187,6 +187,17 @@ export type Database = {
           balance: number | null;
           kims_remarks: string | null;
           status: string | null;
+          account_id: string | null;
+          line_fingerprint: string | null;
+          match_status: string;
+          match_source: string | null;
+          matched_payment_id: string | null;
+          matched_portal_line_id: string | null;
+          match_confidence: string | null;
+          match_reason: string | null;
+          verified_by_employee_id: string | null;
+          verified_at: string | null;
+          uploaded_by_employee_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -202,6 +213,17 @@ export type Database = {
           balance?: number | null;
           kims_remarks?: string | null;
           status?: string | null;
+          account_id?: string | null;
+          line_fingerprint?: string | null;
+          match_status?: string;
+          match_source?: string | null;
+          matched_payment_id?: string | null;
+          matched_portal_line_id?: string | null;
+          match_confidence?: string | null;
+          match_reason?: string | null;
+          verified_by_employee_id?: string | null;
+          verified_at?: string | null;
+          uploaded_by_employee_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -217,6 +239,17 @@ export type Database = {
           balance?: number | null;
           kims_remarks?: string | null;
           status?: string | null;
+          account_id?: string | null;
+          line_fingerprint?: string | null;
+          match_status?: string;
+          match_source?: string | null;
+          matched_payment_id?: string | null;
+          matched_portal_line_id?: string | null;
+          match_confidence?: string | null;
+          match_reason?: string | null;
+          verified_by_employee_id?: string | null;
+          verified_at?: string | null;
+          uploaded_by_employee_id?: string | null;
           created_at?: string;
         };
         Relationships: [
@@ -225,6 +258,201 @@ export type Database = {
             columns: ["company_id"];
             isOneToOne: false;
             referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bank_statement_lines_account_id_fkey";
+            columns: ["account_id"];
+            isOneToOne: false;
+            referencedRelation: "bank_accounts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bank_statement_lines_matched_payment_id_fkey";
+            columns: ["matched_payment_id"];
+            isOneToOne: false;
+            referencedRelation: "bill_pass_register_payments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bank_statement_lines_verified_by_employee_id_fkey";
+            columns: ["verified_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bank_statement_lines_uploaded_by_employee_id_fkey";
+            columns: ["uploaded_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      bank_accounts: {
+        Row: {
+          id: string;
+          company_id: string;
+          account_name: string;
+          account_type: string;
+          bank_name: string | null;
+          account_no: string | null;
+          ifsc_code: string | null;
+          card_last4: string | null;
+          card_holder_name: string | null;
+          credit_limit: number | null;
+          card_due_date: string | null;
+          opening_balance: number;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          account_name: string;
+          account_type?: string;
+          bank_name?: string | null;
+          account_no?: string | null;
+          ifsc_code?: string | null;
+          card_last4?: string | null;
+          card_holder_name?: string | null;
+          credit_limit?: number | null;
+          card_due_date?: string | null;
+          opening_balance?: number;
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          account_name?: string;
+          account_type?: string;
+          bank_name?: string | null;
+          account_no?: string | null;
+          ifsc_code?: string | null;
+          card_last4?: string | null;
+          card_holder_name?: string | null;
+          credit_limit?: number | null;
+          card_due_date?: string | null;
+          opening_balance?: number;
+          active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "bank_accounts_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      credit_card_statement_lines: {
+        Row: {
+          id: string;
+          account_id: string;
+          company_id: string;
+          statement_month: string;
+          txn_date: string;
+          description: string | null;
+          reference_no: string | null;
+          card_last4: string | null;
+          amount: number;
+          txn_direction: string;
+          txn_category: string | null;
+          match_status: string;
+          match_source: string | null;
+          matched_payment_id: string | null;
+          match_confidence: string | null;
+          match_reason: string | null;
+          verified_by_employee_id: string | null;
+          verified_at: string | null;
+          uploaded_by_employee_id: string | null;
+          line_fingerprint: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          company_id: string;
+          statement_month?: string;
+          txn_date: string;
+          description?: string | null;
+          reference_no?: string | null;
+          card_last4?: string | null;
+          amount: number;
+          txn_direction?: string;
+          txn_category?: string | null;
+          match_status?: string;
+          match_source?: string | null;
+          matched_payment_id?: string | null;
+          match_confidence?: string | null;
+          match_reason?: string | null;
+          verified_by_employee_id?: string | null;
+          verified_at?: string | null;
+          uploaded_by_employee_id?: string | null;
+          line_fingerprint: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          account_id?: string;
+          company_id?: string;
+          statement_month?: string;
+          txn_date?: string;
+          description?: string | null;
+          reference_no?: string | null;
+          card_last4?: string | null;
+          amount?: number;
+          txn_direction?: string;
+          txn_category?: string | null;
+          match_status?: string;
+          match_source?: string | null;
+          matched_payment_id?: string | null;
+          match_confidence?: string | null;
+          match_reason?: string | null;
+          verified_by_employee_id?: string | null;
+          verified_at?: string | null;
+          uploaded_by_employee_id?: string | null;
+          line_fingerprint?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "credit_card_statement_lines_account_id_fkey";
+            columns: ["account_id"];
+            isOneToOne: false;
+            referencedRelation: "bank_accounts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "credit_card_statement_lines_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "credit_card_statement_lines_matched_payment_id_fkey";
+            columns: ["matched_payment_id"];
+            isOneToOne: false;
+            referencedRelation: "bill_pass_register_payments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "credit_card_statement_lines_verified_by_employee_id_fkey";
+            columns: ["verified_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "credit_card_statement_lines_uploaded_by_employee_id_fkey";
+            columns: ["uploaded_by_employee_id"];
+            isOneToOne: false;
+            referencedRelation: "employees";
             referencedColumns: ["id"];
           },
         ];
@@ -7382,6 +7610,69 @@ export type Database = {
       };
     };
     Views: {
+      bank_statement_match_view: {
+        Row: {
+          line_id: string;
+          company_id: string;
+          account_id: string;
+          account_name: string;
+          account_type: string;
+          txn_date: string | null;
+          txn_no: string | null;
+          description: string | null;
+          dr_amount: number | null;
+          cr_amount: number | null;
+          balance: number | null;
+          match_status: string;
+          match_source: string | null;
+          match_confidence: string | null;
+          match_reason: string | null;
+          matched_payment_id: string | null;
+          verified_by_employee_id: string | null;
+          verified_at: string | null;
+          matched_invoice_no: string | null;
+          matched_vendor_invoice_no: string | null;
+          matched_payment_amount: number | null;
+          matched_payment_date: string | null;
+          matched_reference_no: string | null;
+          matched_payment_remark: string | null;
+        };
+        Relationships: [];
+      };
+      card_statement_summary_view: {
+        Row: {
+          account_id: string;
+          company_id: string;
+          account_name: string;
+          bank_name: string | null;
+          card_last4: string | null;
+          credit_limit: number | null;
+          card_due_date: string | null;
+          total_spent: number;
+          total_paid: number;
+          card_outstanding: number;
+          available_limit: number;
+          pending_match_count: number;
+          total_txn_count: number;
+        };
+        Relationships: [];
+      };
+      bank_vs_portal_monthly_view: {
+        Row: {
+          company_id: string;
+          account_id: string;
+          account_name: string;
+          month: string;
+          portal_etsy_inr: number;
+          portal_amazon_inr: number;
+          bank_etsy_inr: number;
+          bank_amazon_inr: number;
+          bank_other_inr: number;
+          etsy_variance_inr: number;
+          amazon_variance_inr: number;
+        };
+        Relationships: [];
+      };
       data_quality_alerts_view: {
         Row: {
           order_id: string | null;
@@ -7645,6 +7936,54 @@ export type Database = {
           p_as_of_date: string;
         };
         Returns: number;
+      };
+      // 2026-09-16 — hand-added ahead of the next full regeneration (same
+      // precedent as queue_companion_celebrations): Bank & Card Reconciliation
+      // RPCs from db/2026-09-16-bank-card-reconciliation.sql. Remove these
+      // stubs if scripts/gen-types.mjs is re-run against a DB that has the
+      // migration applied — the generator will emit the identical shape.
+      match_bank_statement_lines: {
+        Args: {
+          p_company_id: string;
+          p_account_id: string;
+          p_line_id?: string;
+          p_source?: string;
+        };
+        Returns: {
+          line_id: string;
+          match_status: string;
+          matched_payment_id: string | null;
+          match_confidence: string | null;
+          match_reason: string | null;
+        }[];
+      };
+      match_card_statement_lines: {
+        Args: {
+          p_company_id: string;
+          p_account_id: string;
+          p_line_id?: string;
+        };
+        Returns: {
+          line_id: string;
+          match_status: string;
+          matched_payment_id: string | null;
+          match_confidence: string | null;
+          match_reason: string | null;
+        }[];
+      };
+      verify_bank_statement_line: {
+        Args: {
+          p_line_id: string;
+          p_by_employee_id: string;
+        };
+        Returns: undefined;
+      };
+      verify_card_statement_line: {
+        Args: {
+          p_line_id: string;
+          p_by_employee_id: string;
+        };
+        Returns: undefined;
       };
     };
     Enums: {
