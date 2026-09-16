@@ -52,6 +52,23 @@ CREATE OR REPLACE VIEW v_sample_category  AS SELECT id FROM item_categories WHER
 CREATE OR REPLACE VIEW v_sample_sku       AS SELECT id FROM skus WHERE sku_code = 'SAMPLE-SKU-001';
 CREATE OR REPLACE VIEW v_sample_order     AS SELECT id, company_id FROM orders WHERE ref_no = 'SAMPLE-001';
 
+-- Many sections' rows carry a NOT NULL employee FK (orders.entry_by_employee_id
+-- etc.). On a real DB the company's own active employee is found by the
+-- correlated subqueries below — but on a FRESH schema (employees table empty
+-- for this company) every one of them would return NULL and the run would
+-- die at the first INSERT. This guard creates one sample employee ONLY when
+-- the company has no active employee at all; otherwise it is a no-op.
+INSERT INTO employees (company_id, name, role_id, active)
+SELECT c.id, 'Sample Employee',
+       COALESCE((SELECT r.id FROM roles r WHERE r.name = 'Order Entry' LIMIT 1),
+                (SELECT r.id FROM roles r LIMIT 1)),
+       true
+FROM companies c
+WHERE c.name = 'Nyko Mart'
+  AND NOT EXISTS (
+    SELECT 1 FROM employees e WHERE e.company_id = c.id AND e.active
+  );
+
 -- =============================================================================
 -- 1) ORDERS — sample order. Deliberately does NOT touch the PO/RF/RG number
 --    sequence: its ref_no 'SAMPLE-001' can never collide with it.
